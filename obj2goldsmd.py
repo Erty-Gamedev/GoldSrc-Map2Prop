@@ -218,11 +218,10 @@ triangles
     for face in allfaces:
         output.write(face.texture + "\n")
 
-        face.polypoints.reverse()
         for p in face.polypoints:
             line = "0\t"
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.v.x, p.v.v.z, p.v.v.y)
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.v.x, p.n.v.y, p.n.v.z)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.v.x, -p.v.v.z, p.v.v.y)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.v.x, -p.n.v.z, p.n.v.y)
             line += "{:.6f} {:.6f}".format(p.t.v.x, p.t.v.y)
             output.write(line + "\n")
 
@@ -247,6 +246,7 @@ $modelname {filename}.mdl
 $cd "."
 $cdtexture "."
 $scale 1.0
+$origin 0 0 0 270
 {rendermodes}$gamma 1.8
 $body studio "{filename}"
 $sequence idle "{filename}"
