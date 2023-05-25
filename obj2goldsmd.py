@@ -44,14 +44,17 @@ try:
     filename = sys.argv[1]
 except IndexError:
     if running_as_exe:
-        logger.DEBUG('Attempted to run without providing file')
+        logger.info('Attempted to run without providing file')
+        input('Press any key to exit...')
         raise FileNotFoundError('No file provided')
     else:
         filename = r'test/cratetest.obj'
 filepath = Path(filename)
 
 if filepath.suffix.lower() != '.obj':
-    logger.DEBUG(f"Invalid file type. Must be .obj, was {filepath.suffix}")
+    logger.info(f"Invalid file type. Must be .obj, was {filepath.suffix}")
+    if running_as_exe:
+        input('Press any key to exit...')
     raise RuntimeError('File type must be .obj!')
 
 filedir = filepath.parents[0]
