@@ -1,0 +1,3 @@
+[submodule "polytri"]
+	path = polytri
+	url = git@github.com:bjorkegeek/polytri.git
