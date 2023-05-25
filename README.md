@@ -6,7 +6,7 @@ Obj2GoldSmd is a tool for converting .obj files exported from the Steam version 
 
 ## How To Use
 
-* Get the latest archive from [Releases](https://github.com/Erty-Gamedev/Obj2GoldSmd/releases) and extract it.
+* Get the latest executable from [Releases](https://github.com/Erty-Gamedev/Obj2GoldSmd/releases).
 * Drag the exported .obj file onto the Obj2GoldSmd.exe executable. A .smd file and a .qc file will be created in the .obj file's directory.
 * Ensure that any textures used are extracted from its .wad package and placed in the same directory as the .smd file.
 * The .qc file is now ready to be compiled with studiomdl.exe.
