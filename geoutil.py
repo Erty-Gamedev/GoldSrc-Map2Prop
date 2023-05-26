@@ -153,6 +153,11 @@ def triangulate_face(polygon: list) -> list:
     return tris
 
 
+def average_normals(normals: list) -> Point:
+    avg = np.sum(normals, axis=0) / len(normals)
+    return Point(*(avg/np.linalg.norm(avg)))
+
+
 class PolyFace:
     def __init__(self, polypoints: list, texture: str):
         self.polypoints = polypoints
