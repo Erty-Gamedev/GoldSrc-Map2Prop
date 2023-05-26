@@ -29,4 +29,12 @@ specifying an output folder,
 disabling NULL face skipping and setting masked rendermode on transparent textures,
 and whether to use edge smoothing and the threshold for it.
 
-It's also planned to implement .rmf/.jmf support (thanks to Captain P for showing me the parsing code for the formats from MESS).
+It's also planned to implement .rmf/.jmf support.
+
+## Special Thanks
+
+Thanks to Captain P for showing me the .rmf/.jmf parsing code from MESS!
+
+### Alpha Testers
+Many thanks goes out to the kind people who helped me test this program durings its alpha stage:
+* SV BOY
