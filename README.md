@@ -24,6 +24,9 @@ Please notify Erty (erty.gamedev@gmail.com) along with the .obj and associated .
 
 ## Future
 
-One of the planned features is full commandline options support (such as specifying an output folder, disabling NULL face skipping and setting masked rendermode on transparent textures).
+One of the planned features is full commandline options support such as
+specifying an output folder,
+disabling NULL face skipping and setting masked rendermode on transparent textures,
+and whether to use edge smoothing and the threshold for it.
 
 It's also planned to implement .rmf/.jmf support (thanks to Captain P for showing me the parsing code for the formats from MESS).
