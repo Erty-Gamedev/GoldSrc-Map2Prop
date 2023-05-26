@@ -46,7 +46,7 @@ except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
         input('Press any key to exit...')
-        raise FileNotFoundError('No file provided')
+        raise RuntimeError('No file provided')
     else:
         filename = r'test/cratetest.obj'
 filepath = Path(filename)
@@ -60,7 +60,6 @@ if filepath.suffix.lower() != '.obj':
 filedir = filepath.parents[0]
 filename = filepath.stem
 outputdir = filedir
-
 
 mtllib_prefix = 'mtllib '
 mtl_prefix = 'newmtl '
