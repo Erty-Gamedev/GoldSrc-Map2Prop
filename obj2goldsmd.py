@@ -103,7 +103,7 @@ def readMtlFile(filename: str) -> dict:
                 texture = line[len(mtl_map_prefix):].replace('.tga', '.bmp')
                 if not (filedir / texture).exists():
                     logger.info(f"""\
-Texture {texture} not found in .obj file's directory.\
+Texture {texture} not found in .obj file's directory. \
 Make sure it exists prior to attempting compiling the model.""")
                 materials[current] = texture
 
