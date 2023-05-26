@@ -13,6 +13,9 @@ from geoutil import (Point, PolyPoint, ObjItem,
                      PolyFace, triangulate_face, InvalidSolidException)
 
 
+enter_to_exit = 'Press Enter to exit...'
+
+
 logdir = Path('logs')
 if not logdir.is_dir():
     logdir.mkdir()
@@ -45,7 +48,7 @@ try:
 except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
-        input('Press any key to exit...')
+        input(enter_to_exit)
         raise RuntimeError('No file provided')
     else:
         filename = r'test/cratetest.obj'
@@ -54,7 +57,7 @@ filepath = Path(filename)
 if filepath.suffix.lower() != '.obj':
     logger.info(f"Invalid file type. Must be .obj, was {filepath.suffix}")
     if running_as_exe:
-        input('Press any key to exit...')
+        input(enter_to_exit)
     raise RuntimeError('File type must be .obj!')
 
 filedir = filepath.parents[0]
@@ -259,4 +262,4 @@ logger.info('Finished!')
 logging.shutdown()
 
 if running_as_exe:
-    input('Press any key to exit...')
+    input(enter_to_exit)
