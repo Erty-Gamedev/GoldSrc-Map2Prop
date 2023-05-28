@@ -11,6 +11,10 @@ from datetime import datetime
 from pathlib import Path
 from geoutil import (Point, PolyPoint, ObjItem,
                      PolyFace, triangulate_face, InvalidSolidException)
+from wad3_reader import Wad3Reader
+
+
+enter_to_exit = 'Press Enter to exit...'
 
 
 logdir = Path('logs')
@@ -45,7 +49,7 @@ try:
 except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
-        input('Press any key to exit...')
+        input(enter_to_exit)
         raise RuntimeError('No file provided')
     else:
         filename = r'test/cratetest.obj'
@@ -54,7 +58,7 @@ filepath = Path(filename)
 if filepath.suffix.lower() != '.obj':
     logger.info(f"Invalid file type. Must be .obj, was {filepath.suffix}")
     if running_as_exe:
-        input('Press any key to exit...')
+        input(enter_to_exit)
     raise RuntimeError('File type must be .obj!')
 
 filedir = filepath.parents[0]
@@ -78,10 +82,23 @@ poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
 
 coord_prefixes = [vertex_prefix, texture_coord_prefix, vertex_normal_prefix]
 
+wads = None
+
 
 def parseCoord(coord: str) -> list:
     coord = coord.split(' ')
     return Point(*[float(n) for n in coord])
+
+
+def get_wads() -> list:
+    global wads
+    if wads is None:
+        readers = []
+        globs = filedir.glob('*.wad')
+        for glob in globs:
+            readers.append(Wad3Reader(glob))
+        wads = readers
+    return wads
 
 
 def readMtlFile(filename: str) -> dict:
@@ -100,8 +117,22 @@ def readMtlFile(filename: str) -> dict:
                 texture = line[len(mtl_map_prefix):].replace('.tga', '.bmp')
                 if not (filedir / texture).exists():
                     logger.info(f"""\
-Texture {texture} not found in .obj file's directory.\
-Make sure it exists prior to attempting compiling the model.""")
+Texture {texture} not found in .obj file's directory. \
+Searching directory for .wad packages...""")
+                    found = False
+                    for wad in get_wads():
+                        if current in wad:
+                            logger.info(f"""\
+Extracting {texture} from {wad.file}.""")
+                            wad[current].save(filedir / texture)
+                            found = True
+
+                    if found is False:
+                        logger.info(f"""\
+Texture {texture} not found in neither .obj file's directory \
+or any .wad packages within that directory. Please place the .wad package \
+containing the texture in the .obj file's directory and re-run the \
+application or extract the textures manually prior to compilation.""")
                 materials[current] = texture
 
     return materials
@@ -259,4 +290,4 @@ logger.info('Finished!')
 logging.shutdown()
 
 if running_as_exe:
-    input('Press any key to exit...')
+    input(enter_to_exit)
