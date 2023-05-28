@@ -36,6 +36,7 @@ It's also planned to implement .rmf/.jmf support.
 Thanks to Captain P for showing me the .rmf/.jmf parsing code from MESS!
 
 ### Alpha Testers
-Many thanks goes out to the kind people who helped me test this program durings its alpha stage:
+Many thanks goes out to the kind people who helped me test this program and provide useful feedback and suggestions during its alpha stage:
 * SV BOY
 * TheMadCarrot
+* Descen
