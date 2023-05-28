@@ -30,8 +30,8 @@ class DirEntry:
 
 class TextureEntry:
     def __init__(self, data: bytes):
-        self.name = struct.unpack('16s', data[0:16])[0].rstrip(
-            b'\x00').decode('ascii')
+        self.name = struct.unpack('16s', data[0:16])[0].decode(
+            'ascii').split('\x00', 1)[0]
         self.width = struct.unpack('L', data[16:20])[0]
         self.height = struct.unpack('L', data[20:24])[0]
         self.mipoffset0 = struct.unpack('L', data[24:28])[0]
@@ -50,6 +50,8 @@ class TextureEntry:
 class Wad3Reader:
     def __init__(self, file: Path):
         with file.open('rb') as wadfile:
+            self.file = file
+
             data = wadfile.read()
 
             header = data[0:12]
