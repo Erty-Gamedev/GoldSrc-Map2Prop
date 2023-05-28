@@ -29,6 +29,8 @@ specifying an output folder,
 disabling NULL face skipping and setting masked rendermode on transparent textures,
 and whether to use edge smoothing and the threshold for it.
 
+Extracting each texture from the .wad files may be tedius so a planned feature is for the program to be able to search through the work directory for .wad files and automatically extract any matching textures from those.
+
 It's also planned to implement .rmf/.jmf support.
 
 ## Special Thanks
@@ -38,3 +40,4 @@ Thanks to Captain P for showing me the .rmf/.jmf parsing code from MESS!
 ### Alpha Testers
 Many thanks goes out to the kind people who helped me test this program durings its alpha stage:
 * SV BOY
+* TheMadCarrot
