@@ -186,11 +186,12 @@ with filepath.open('r') as obj:
             polypoints = []
             for point in points:
                 i_v, i_t, i_n = [int(n) for n in point.split('/')]
-                polypoints.append(PolyPoint(
-                    ObjItem(i_v, vertices[i_v - 1]),
-                    ObjItem(i_t, textures[i_t - 1]),
-                    ObjItem(i_n, normals[i_n - 1])
-                ))
+                polypoint = PolyPoint(
+                    vertices[i_v - 1],
+                    textures[i_t - 1],
+                    normals[i_n - 1]
+                )
+
                 verts.append(vertices[i_v - 1])
 
             try:
@@ -203,7 +204,7 @@ with filepath.open('r') as obj:
                 face = []
                 for p in tri:
                     for polyp in polypoints:
-                        if p == polyp.v.v:
+                        if p == polyp.v:
                             face.append(polyp)
                             break
 
@@ -253,9 +254,9 @@ triangles
 
         for p in face.polypoints:
             line = "0\t"
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.v.x, -p.v.v.z, p.v.v.y)
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.v.x, -p.n.v.z, p.n.v.y)
-            line += "{:.6f} {:.6f}".format(p.t.v.x, p.t.v.y)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, -p.v.z, p.v.y)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, -p.n.z, p.n.y)
+            line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
             output.write(line + "\n")
 
     output.write('end' + "\n")

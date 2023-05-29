@@ -15,7 +15,11 @@ from polytri.polytri import triangulate
 Point = namedtuple('Point', ['x', 'y', 'z'])
 Uv = namedtuple('Uv', ['u', 'v', 'w'])
 ObjItem = namedtuple('ObjItem', ['i', 'v'])
-PolyPoint = namedtuple('PolyPoint', ['v', 't', 'n'])
+
+
+class PolyPoint:
+    def __init__(self, v: Point, t: Point, n: Point):
+        self.v, self.t, self.n = v, t, n
 
 
 class InvalidSolidException(Exception):
@@ -161,7 +165,7 @@ def average_normals(normals: list) -> Point:
 class PolyFace:
     def __init__(self, polypoints: list, texture: str):
         self.polypoints = polypoints
-        self.vertices = [p.v.v for p in self.polypoints]
+        self.vertices = [p.v for p in self.polypoints]
         self.texture = texture
 
         if not check_planar(self.vertices):
