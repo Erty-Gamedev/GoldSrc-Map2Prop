@@ -52,14 +52,17 @@ def segments_cross(a: Point, b: Point, c: Point):
     return np.cross(ab, bc)
 
 
+def vectors_angle(a: Point, b: Point):
+    return np.arccos(
+        np.dot(a, b)
+        / np.linalg.norm(a) * np.linalg.norm(b)
+    )
+
+
 def segments_angle(a: Point, b: Point, c: Point):
     vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
     vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
-
-    dot = np.dot(vector_ab, vector_bc)
-    magprod = np.linalg.norm(vector_ab) * np.linalg.norm(vector_bc)
-
-    return np.arccos(dot / magprod)
+    return vectors_angle(vector_ab, vector_bc)
 
 
 def plane_rotation(normal, d):
@@ -160,6 +163,38 @@ def triangulate_face(polygon: list) -> list:
 def average_normals(normals: list) -> Point:
     avg = np.sum(normals, axis=0) / len(normals)
     return Point(*(avg/np.linalg.norm(avg)))
+
+
+def average_near_normals(normals: list, threshold: float) -> dict:
+    new_normals = {}
+
+    i, c = 0, 0
+    while i < len(normals):
+        c += 1
+        if c > 1000:
+            raise Exception('Possible infinite loop encountered')
+
+        a = normals[i]
+
+        near = [a]
+        for b in normals:
+            if b is a:
+                continue
+            if vectors_angle(a, b) <= threshold:
+                near.append(b)
+        if len(near) == 1:
+            new_normals[a] = a
+            i += 1
+            continue
+
+        new_normals[a] = average_normals(near)
+        for n in near:
+            new_normals[n] = new_normals[a]
+            normals.remove(n)
+
+        i = 0
+
+    return new_normals
 
 
 class PolyFace:

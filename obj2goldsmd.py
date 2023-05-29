@@ -10,8 +10,9 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
+import numpy as np
 from geoutil import (Point, PolyPoint, PolyFace,
-                     triangulate_face, average_normals,
+                     triangulate_face, average_normals, average_near_normals,
                      InvalidSolidException)
 from wad3_reader import Wad3Reader
 
@@ -254,11 +255,22 @@ if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
     else:
         smoothing = int(smoothing)
 
-    for point in allpolypoints:
-        normals = vn_map[point.v]
-        if not isinstance(normals, Point):
-            normals = average_normals(normals)
-        point.n = normals
+    if smoothing > 0:
+        averaged_normals = {}
+        smooth_rad = np.deg2rad(smoothing)
+
+        for point in allpolypoints:
+            if point.v not in averaged_normals:
+                averaged_normals[point.v] = average_near_normals(
+                    vn_map[point.v], smooth_rad)
+            point.n = averaged_normals[point.v][point.n]
+
+    else:
+        for point in allpolypoints:
+            normals = vn_map[point.v]
+            if not isinstance(normals, Point):
+                normals = average_normals(normals)
+            point.n = normals
 
 
 with open(outputdir / f"{filename}.smd", 'w') as output:
