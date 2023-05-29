@@ -5,12 +5,14 @@ Created on Wed May 17 12:20:37 2023
 @author: Erty
 """
 
+import re
 import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from geoutil import (Point, PolyPoint, ObjItem,
-                     PolyFace, triangulate_face, InvalidSolidException)
+from geoutil import (Point, PolyPoint, PolyFace,
+                     triangulate_face, average_normals,
+                     InvalidSolidException)
 from wad3_reader import Wad3Reader
 
 
@@ -144,6 +146,8 @@ textures = []
 normals = []
 objects = {}
 allfaces = []
+vn_map = {}
+allpolypoints = []
 maskedtextures = []
 with filepath.open('r') as obj:
     current_obj = ''
@@ -192,6 +196,12 @@ with filepath.open('r') as obj:
                     normals[i_n - 1]
                 )
 
+                if polypoint.v not in vn_map:
+                    vn_map[polypoint.v] = []
+                vn_map[polypoint.v].append(polypoint.n)
+
+                polypoints.append(polypoint)
+                allpolypoints.append(polypoint)
                 verts.append(vertices[i_v - 1])
 
             try:
@@ -235,6 +245,21 @@ with filepath.open('r') as obj:
 # Create .smd
 if not outputdir.is_dir():
     outputdir.mkdir()
+
+
+if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
+    smoothing = match.group(0)[len('_smooth'):]
+    if smoothing == '':
+        smoothing = 0
+    else:
+        smoothing = int(smoothing)
+
+    for point in allpolypoints:
+        normals = vn_map[point.v]
+        if not isinstance(normals, Point):
+            normals = average_normals(normals)
+        point.n = normals
+
 
 with open(outputdir / f"{filename}.smd", 'w') as output:
     logger.info('Writing .smd file')
