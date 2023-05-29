@@ -5,12 +5,15 @@ Created on Wed May 17 12:20:37 2023
 @author: Erty
 """
 
+import re
 import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from geoutil import (Point, PolyPoint, ObjItem,
-                     PolyFace, triangulate_face, InvalidSolidException)
+import numpy as np
+from geoutil import (Point, PolyPoint, PolyFace,
+                     triangulate_face, average_normals, average_near_normals,
+                     InvalidSolidException)
 from wad3_reader import Wad3Reader
 
 
@@ -144,6 +147,8 @@ textures = []
 normals = []
 objects = {}
 allfaces = []
+vn_map = {}
+allpolypoints = []
 maskedtextures = []
 with filepath.open('r') as obj:
     current_obj = ''
@@ -186,11 +191,18 @@ with filepath.open('r') as obj:
             polypoints = []
             for point in points:
                 i_v, i_t, i_n = [int(n) for n in point.split('/')]
-                polypoints.append(PolyPoint(
-                    ObjItem(i_v, vertices[i_v - 1]),
-                    ObjItem(i_t, textures[i_t - 1]),
-                    ObjItem(i_n, normals[i_n - 1])
-                ))
+                polypoint = PolyPoint(
+                    vertices[i_v - 1],
+                    textures[i_t - 1],
+                    normals[i_n - 1]
+                )
+
+                if polypoint.v not in vn_map:
+                    vn_map[polypoint.v] = []
+                vn_map[polypoint.v].append(polypoint.n)
+
+                polypoints.append(polypoint)
+                allpolypoints.append(polypoint)
                 verts.append(vertices[i_v - 1])
 
             try:
@@ -203,7 +215,7 @@ with filepath.open('r') as obj:
                 face = []
                 for p in tri:
                     for polyp in polypoints:
-                        if p == polyp.v.v:
+                        if p == polyp.v:
                             face.append(polyp)
                             break
 
@@ -235,6 +247,32 @@ with filepath.open('r') as obj:
 if not outputdir.is_dir():
     outputdir.mkdir()
 
+
+if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
+    smoothing = match.group(0)[len('_smooth'):]
+    if smoothing == '':
+        smoothing = 0
+    else:
+        smoothing = int(smoothing)
+
+    if smoothing > 0:
+        averaged_normals = {}
+        smooth_rad = np.deg2rad(smoothing)
+
+        for point in allpolypoints:
+            if point.v not in averaged_normals:
+                averaged_normals[point.v] = average_near_normals(
+                    vn_map[point.v], smooth_rad)
+            point.n = averaged_normals[point.v][point.n]
+
+    else:
+        for point in allpolypoints:
+            normals = vn_map[point.v]
+            if not isinstance(normals, Point):
+                normals = average_normals(normals)
+            point.n = normals
+
+
 with open(outputdir / f"{filename}.smd", 'w') as output:
     logger.info('Writing .smd file')
 
@@ -253,9 +291,9 @@ triangles
 
         for p in face.polypoints:
             line = "0\t"
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.v.x, -p.v.v.z, p.v.v.y)
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.v.x, -p.n.v.z, p.n.v.y)
-            line += "{:.6f} {:.6f}".format(p.t.v.x, p.t.v.y)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, -p.v.z, p.v.y)
+            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, -p.n.z, p.n.y)
+            line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
             output.write(line + "\n")
 
     output.write('end' + "\n")
