@@ -21,24 +21,29 @@ class ConfigUtil:
 
     @property
     def studiomdl(self) -> Path:
-        return Path(self.config['AppConfig']['studiomdl'])
+        return Path(self.config['AppConfig'].get('studiomdl', False))
 
     @property
     def mod_path(self) -> Path:
-        game = self.config['AppConfig']['game config']
-        mod = f"{self.config[game]['game']}\\{self.config[game]['mod']}"
-        return (Path(self.config['AppConfig']['steam directory'])
-                / f"steamapps\\common\\{mod}")
+        game = self.config['AppConfig'].get('game config', False)
+        steamdir = self.config['AppConfig'].get('steam directory', False)
+
+        if not (game and steamdir):
+            return None
+
+        return (Path(steamdir) / r'steamapps\common'
+                / self.config[game].get('game')
+                / self.config[game].get('mod'))
 
     @property
     def wad_list(self) -> list:
-        wads = (self.config['AppConfig']['wad list'].rstrip(' ,')
+        wads = (self.config['AppConfig'].get('wad list', '').rstrip(' ,')
                 .replace("\n", '').split(','))
-        return [Path(wad) for wad in wads]
+        return [Path(wad) for wad in wads if wad != '']
 
     @property
     def autocompile(self) -> bool:
-        return self.config['AppConfig'].getboolean('autocompile')
+        return self.config['AppConfig'].getboolean('autocompile', False)
 
     def __create_default_config(self):
         self.config['AppConfig'] = {
