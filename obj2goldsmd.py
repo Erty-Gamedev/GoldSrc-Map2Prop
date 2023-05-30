@@ -6,11 +6,14 @@ Created on Wed May 17 12:20:37 2023
 """
 
 import re
+import os
 import sys
+import subprocess
 import numpy as np
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import (Point, average_normals, average_near_normals,)
+from geoutil import Point, average_normals, average_near_normals
+from configutil import config
 from formats.obj_reader import ObjReader
 
 
@@ -129,7 +132,27 @@ $sequence idle "{filename}"
 """)
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
-logger.info('Finished!')
+if config.autocompile and config.studiomdl.is_file():
+    logger.info('Autocompile enabled, compiling model...')
+
+    os.chdir(outputdir.absolute())
+
+    try:
+        completed_process = subprocess.run([
+            config.studiomdl,
+            Path(f"{filename}.qc"),
+        ], check=False, timeout=30, capture_output=True)
+
+        logger.info(completed_process.stdout.decode('ascii'))
+
+        if completed_process.returncode == 0:
+            logger.info(f"{outputdir / filename}.mdl compiled successfully!")
+        else:
+            logger.info('Something went wrong. Check the compiler output '
+                        + 'above for errors.')
+    except Exception:
+        logger.exception('Model compilation failed with exception')
+
 
 shutdown_logger(logger)
 
