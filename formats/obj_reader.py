@@ -29,7 +29,11 @@ poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
 
 
 skip_textures = [
-    'null', 'skip'
+    'aaatrigger', 'bevel', 'black_hidden',
+    'clip', 'clipbevel', 'clipbevelbrush',
+    'cliphull1', 'cliphull2', 'cliphull3',
+    'contentempty', 'hint', 'noclip', 'null',
+    'skip', 'sky', 'solidhint'
 ]
 
 
@@ -134,12 +138,13 @@ application or extract the textures manually prior to compilation.""")
                 # Parse textures:
                 elif line.startswith(usemtl_prefix):
                     tex = line[len(usemtl_prefix):]
-                    self.__check_texture(tex)
 
                     if tex.lower() in skip_textures:
                         continue
-                    elif (tex.startswith('{')
-                          and tex not in self.maskedtextures):
+
+                    self.__check_texture(tex)
+
+                    if tex.startswith('{') and tex not in self.maskedtextures:
                         self.maskedtextures.append(tex)
 
                 # Parse faces:
