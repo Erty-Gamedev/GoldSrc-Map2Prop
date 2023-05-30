@@ -14,7 +14,7 @@ from configutil import config
 
 
 WAD_SKIP_LIST = [
-    'cached'
+    'cached',
     'decals',
     'fonts',
     'gfx',
@@ -85,9 +85,20 @@ class ObjReader:
                     cls.__wads.append(Wad3Reader(wad))
                 return cls.__wads
 
+            checked_wads = []
+
+            if config.mod_path:
+                globs = config.mod_path.glob('*.wad')
+                for glob in globs:
+                    if glob.stem.lower() in WAD_SKIP_LIST:
+                        continue
+                    cls.__wads.append(Wad3Reader(glob))
+                    checked_wads.append(glob.stem)
+
             globs = filedir.glob('*.wad')
             for glob in globs:
-                if glob.stem.lower() in WAD_SKIP_LIST:
+                if glob.stem.lower() in WAD_SKIP_LIST or (
+                        glob.stem in checked_wads):
                     continue
                 cls.__wads.append(Wad3Reader(glob))
         return cls.__wads
