@@ -7,8 +7,7 @@ Created on Wed May 17 12:20:37 2023
 
 import re
 import sys
-import logging
-from datetime import datetime
+from logutil import get_logger, shutdown_logger
 from pathlib import Path
 import numpy as np
 from geoutil import (Point, PolyPoint, PolyFace,
@@ -17,32 +16,8 @@ from geoutil import (Point, PolyPoint, PolyFace,
 from wad3_reader import Wad3Reader
 
 
+logger = get_logger(__name__)
 enter_to_exit = 'Press Enter to exit...'
-
-
-logdir = Path('logs')
-if not logdir.is_dir():
-    logdir.mkdir()
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-now = datetime.now()
-filelog = logging.FileHandler(
-    logdir / f"error_{now.strftime('%Y-%m-%d')}.log")
-filelog.setLevel(logging.WARNING)
-filelog.setFormatter(
-    logging.Formatter('%(asctime)s | %(levelname)-8s : %(message)s')
-)
-
-conlog = logging.StreamHandler()
-conlog.setLevel(logging.INFO)
-conlog.setFormatter(
-    logging.Formatter('%(levelname)-8s : %(message)s')
-)
-
-logger.addHandler(filelog)
-logger.addHandler(conlog)
 
 
 running_as_exe = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
@@ -325,7 +300,8 @@ $sequence idle "{filename}"
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
 logger.info('Finished!')
-logging.shutdown()
+
+shutdown_logger(logger)
 
 if running_as_exe:
     input(enter_to_exit)
