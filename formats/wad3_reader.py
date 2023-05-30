@@ -48,6 +48,13 @@ class TextureEntry:
 
 
 class Wad3Reader:
+    """
+    Reads all the textures from the specified .wad package
+    as PIL Images with preserved indexed palette.
+    The instance can be accessed as a dictionary that maps
+    texture name to its Image instance.
+    """
+
     def __init__(self, file: Path):
         with file.open('rb') as wadfile:
             self.file = file
