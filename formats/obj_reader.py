@@ -9,7 +9,25 @@ from pathlib import Path
 from logutil import get_logger, shutdown_logger
 from geoutil import (Point, PolyPoint, PolyFace,
                      InvalidSolidException, triangulate_face)
-from . wad3_reader import Wad3Reader
+from formats.wad3_reader import Wad3Reader
+from configutil import config
+
+
+WAD_SKIP_LIST = [
+    'cached',
+    'decals',
+    'fonts',
+    'gfx',
+    'spraypaint',
+    'tempdecal',
+]
+SKIP_TEXTURES = [
+    'aaatrigger', 'bevel', 'black_hidden',
+    'clip', 'clipbevel', 'clipbevelbrush',
+    'cliphull1', 'cliphull2', 'cliphull3',
+    'contentempty', 'hint', 'noclip', 'null',
+    'skip', 'sky', 'solidhint'
+]
 
 
 mtllib_prefix = 'mtllib '
@@ -26,15 +44,6 @@ texture_coord_prefix = 'vt '    # (u v w)
 vertex_normal_prefix = 'vn '    # (x y z)
 poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
 # Note: The above indices are 1-indexed
-
-
-skip_textures = [
-    'aaatrigger', 'bevel', 'black_hidden',
-    'clip', 'clipbevel', 'clipbevelbrush',
-    'cliphull1', 'cliphull2', 'cliphull3',
-    'contentempty', 'hint', 'noclip', 'null',
-    'skip', 'sky', 'solidhint'
-]
 
 
 def parseCoord(coord: str) -> list:
@@ -68,13 +77,31 @@ class ObjReader:
 
     @classmethod
     def __get_wads(cls, filedir: Path) -> list:
-        if cls.__class__.__wads is None:
-            readers = []
+        if cls.__wads is None:
+            cls.__wads = []
+
+            if config.wad_list:
+                for wad in config.wad_list:
+                    cls.__wads.append(Wad3Reader(wad))
+                return cls.__wads
+
+            checked_wads = []
+
+            if config.mod_path:
+                globs = config.mod_path.glob('*.wad')
+                for glob in globs:
+                    if glob.stem.lower() in WAD_SKIP_LIST:
+                        continue
+                    cls.__wads.append(Wad3Reader(glob))
+                    checked_wads.append(glob.stem)
+
             globs = filedir.glob('*.wad')
             for glob in globs:
-                readers.append(Wad3Reader(glob))
-            cls.__class__.__wads = readers
-        return cls.__class__.__wads
+                if glob.stem.lower() in WAD_SKIP_LIST or (
+                        glob.stem in checked_wads):
+                    continue
+                cls.__wads.append(Wad3Reader(glob))
+        return cls.__wads
 
     def __check_texture(self, texture: str) -> str:
         texfile = f"{texture}.bmp"
@@ -83,11 +110,11 @@ class ObjReader:
 Texture {texture}.bmp not found in .obj file's directory. \
 Searching directory for .wad packages...""")
             found = False
-            for wad in self.__get_wads(self.__filedir):
+            for wad in self.__class__.__get_wads(self.__filedir):
                 if texture in wad:
                     self.__logger.info(f"""\
 Extracting {texture} from {wad.file}.""")
-                    wad[texture].save(self.filedir / texfile)
+                    wad[texture].save(self.__filedir / texfile)
                     found = True
 
             if found is False:
@@ -139,7 +166,7 @@ application or extract the textures manually prior to compilation.""")
                 elif line.startswith(usemtl_prefix):
                     tex = line[len(usemtl_prefix):]
 
-                    if tex.lower() in skip_textures:
+                    if tex.lower() in SKIP_TEXTURES:
                         continue
 
                     self.__check_texture(tex)
@@ -149,7 +176,7 @@ application or extract the textures manually prior to compilation.""")
 
                 # Parse faces:
                 elif line.startswith(poly_face_prefix):
-                    if tex.lower() in skip_textures:
+                    if tex.lower() in SKIP_TEXTURES:
                         continue
 
                     points = line[len(poly_face_prefix):].split(' ')
