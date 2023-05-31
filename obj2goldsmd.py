@@ -6,44 +6,20 @@ Created on Wed May 17 12:20:37 2023
 """
 
 import re
+import os
 import sys
-import logging
-from datetime import datetime
-from pathlib import Path
+import subprocess
 import numpy as np
-from geoutil import (Point, PolyPoint, PolyFace,
-                     triangulate_face, average_normals, average_near_normals,
-                     InvalidSolidException)
-from wad3_reader import Wad3Reader
+from pathlib import Path
+from logutil import get_logger, shutdown_logger
+from geoutil import Point, average_normals, average_near_normals
+from configutil import config
+from formats.obj_reader import ObjReader
 
 
+logger = get_logger(__name__)
 enter_to_exit = 'Press Enter to exit...'
-
-
-logdir = Path('logs')
-if not logdir.is_dir():
-    logdir.mkdir()
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-now = datetime.now()
-filelog = logging.FileHandler(
-    logdir / f"error_{now.strftime('%Y-%m-%d')}.log")
-filelog.setLevel(logging.WARNING)
-filelog.setFormatter(
-    logging.Formatter('%(asctime)s | %(levelname)-8s : %(message)s')
-)
-
-conlog = logging.StreamHandler()
-conlog.setLevel(logging.INFO)
-conlog.setFormatter(
-    logging.Formatter('%(levelname)-8s : %(message)s')
-)
-
-logger.addHandler(filelog)
-logger.addHandler(conlog)
-
+supported_formats = ('.obj', '.rmf')
 
 running_as_exe = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
@@ -57,190 +33,22 @@ except IndexError:
     else:
         filename = r'test/cratetest.obj'
 filepath = Path(filename)
+extension = filepath.suffix.lower()
 
-if filepath.suffix.lower() != '.obj':
-    logger.info(f"Invalid file type. Must be .obj, was {filepath.suffix}")
+if extension not in supported_formats:
+    logger.info(
+        f"Invalid file type. Must be .obj or .rmf, was {filepath.suffix}")
     if running_as_exe:
         input(enter_to_exit)
-    raise RuntimeError('File type must be .obj!')
+    raise RuntimeError('File type must be .obj or .rmf!')
 
 filedir = filepath.parents[0]
 filename = filepath.stem
 outputdir = filedir
 
-mtllib_prefix = 'mtllib '
-mtl_prefix = 'newmtl '
-mtl_map_prefix = 'map_Ka '
 
-object_prefix = 'o '
-group_prefix = 'g '
-smooth_prefix = 's '
-usemtl_prefix = 'usemtl '
-
-vertex_prefix = 'v '            # (x y z)
-texture_coord_prefix = 'vt '    # (u v w)
-vertex_normal_prefix = 'vn '    # (x y z)
-poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
-# Note: The above indices are 1-indexed
-
-coord_prefixes = [vertex_prefix, texture_coord_prefix, vertex_normal_prefix]
-
-wads = None
-
-
-def parseCoord(coord: str) -> list:
-    coord = coord.split(' ')
-    return Point(*[float(n) for n in coord])
-
-
-def get_wads() -> list:
-    global wads
-    if wads is None:
-        readers = []
-        globs = filedir.glob('*.wad')
-        for glob in globs:
-            readers.append(Wad3Reader(glob))
-        wads = readers
-    return wads
-
-
-def readMtlFile(filename: str) -> dict:
-    materials = {}
-
-    with open(filedir / filename) as mtlfile:
-        current = ''
-        for line in mtlfile:
-            line = line.rstrip()
-
-            if line.startswith('#'):
-                continue
-            elif line.startswith(mtl_prefix):
-                current = line[len(mtl_prefix):]
-            elif line.startswith(mtl_map_prefix):
-                texture = line[len(mtl_map_prefix):].replace('.tga', '.bmp')
-                if not (filedir / texture).exists():
-                    logger.info(f"""\
-Texture {texture} not found in .obj file's directory. \
-Searching directory for .wad packages...""")
-                    found = False
-                    for wad in get_wads():
-                        if current in wad:
-                            logger.info(f"""\
-Extracting {texture} from {wad.file}.""")
-                            wad[current].save(filedir / texture)
-                            found = True
-
-                    if found is False:
-                        logger.info(f"""\
-Texture {texture} not found in neither .obj file's directory \
-or any .wad packages within that directory. Please place the .wad package \
-containing the texture in the .obj file's directory and re-run the \
-application or extract the textures manually prior to compilation.""")
-                materials[current] = texture
-
-    return materials
-
-
-materials = {}
-vertices = []
-textures = []
-normals = []
-objects = {}
-allfaces = []
-vn_map = {}
-allpolypoints = []
-maskedtextures = []
-with filepath.open('r') as obj:
-    current_obj = ''
-    group = ''
-    tex = ''
-    logger.info(f"Opened {filepath}")
-
-    for line in obj:
-        line = line.rstrip()
-
-        if line.startswith(mtllib_prefix):
-            materials = readMtlFile(line[len(mtllib_prefix):])
-
-        elif line.startswith(object_prefix):
-            current_obj = line[len(object_prefix):]
-            objects[current_obj] = {
-                'smooth': 'off',
-                'groups': {},
-            }
-        elif line.startswith(smooth_prefix):
-            objects[current_obj]['smooth'] = line[len(smooth_prefix):]
-        elif line.startswith(group_prefix):
-            group = line[len(group_prefix):]
-            objects[current_obj]['groups'][group] = {
-                'faces': []
-            }
-        elif line.startswith(usemtl_prefix):
-            tex = materials[line[len(usemtl_prefix):]]
-            if tex.lower() == 'null.bmp':
-                continue
-            elif tex.startswith('{') and tex not in maskedtextures:
-                maskedtextures.append(tex)
-        elif line.startswith(poly_face_prefix):
-            if tex.lower() == 'null.bmp':
-                continue
-
-            points = line[len(poly_face_prefix):].split(' ')
-
-            verts = []
-            polypoints = []
-            for point in points:
-                i_v, i_t, i_n = [int(n) for n in point.split('/')]
-                polypoint = PolyPoint(
-                    vertices[i_v - 1],
-                    textures[i_t - 1],
-                    normals[i_n - 1]
-                )
-
-                if polypoint.v not in vn_map:
-                    vn_map[polypoint.v] = []
-                vn_map[polypoint.v].append(polypoint.n)
-
-                polypoints.append(polypoint)
-                allpolypoints.append(polypoint)
-                verts.append(vertices[i_v - 1])
-
-            try:
-                tris = triangulate_face(verts)
-            except Exception:
-                logger.exception('Face triangulation failed')
-                raise
-
-            for tri in tris:
-                face = []
-                for p in tri:
-                    for polyp in polypoints:
-                        if p == polyp.v:
-                            face.append(polyp)
-                            break
-
-                try:
-                    polyface = PolyFace(face, tex)
-                except InvalidSolidException as ise:
-                    logger.error(
-                        f"Object had one or more invalid faces: {ise.message}"
-                    )
-                    raise
-
-                allfaces.append(polyface)
-                objects[current_obj]['groups'][group]['faces'].append(
-                    PolyFace(face, tex)
-                )
-
-        elif line.startswith(vertex_prefix):
-            coord = line[len(vertex_prefix):]
-            vertices.append(parseCoord(coord))
-        elif line.startswith(texture_coord_prefix):
-            coord = line[len(texture_coord_prefix):]
-            textures.append(parseCoord(coord))
-        elif line.startswith(vertex_normal_prefix):
-            coord = line[len(vertex_normal_prefix):]
-            normals.append(parseCoord(coord))
+if extension == '.obj':
+    filereader = ObjReader(filepath)
 
 
 # Create .smd
@@ -259,15 +67,15 @@ if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
         averaged_normals = {}
         smooth_rad = np.deg2rad(smoothing)
 
-        for point in allpolypoints:
+        for point in filereader.allpolypoints:
             if point.v not in averaged_normals:
                 averaged_normals[point.v] = average_near_normals(
-                    vn_map[point.v], smooth_rad)
+                    filereader.vn_map[point.v], smooth_rad)
             point.n = averaged_normals[point.v][point.n]
 
     else:
-        for point in allpolypoints:
-            normals = vn_map[point.v]
+        for point in filereader.allpolypoints:
+            normals = filereader.vn_map[point.v]
             if not isinstance(normals, Point):
                 normals = average_normals(normals)
             point.n = normals
@@ -286,8 +94,8 @@ time 0
 end
 triangles
 ''')
-    for face in allfaces:
-        output.write(face.texture + "\n")
+    for face in filereader.allfaces:
+        output.write(f"{face.texture}.bmp\n")
 
         for p in face.polypoints:
             line = "0\t"
@@ -305,9 +113,9 @@ with open(outputdir / f"{filename}.qc", 'w') as output:
     logger.info('Writing .qc file')
 
     rendermodes = ''
-    if maskedtextures:
-        for texture in maskedtextures:
-            rendermodes += f"$texrendermode {texture} masked\n"
+    if filereader.maskedtextures:
+        for texture in filereader.maskedtextures:
+            rendermodes += f"$texrendermode {texture}.bmp masked\n"
 
     output.write(f"""/*
  Automatically generated by Erty's Obj2GoldSmd.
@@ -324,8 +132,29 @@ $sequence idle "{filename}"
 """)
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
-logger.info('Finished!')
-logging.shutdown()
+if config.autocompile and config.studiomdl.is_file():
+    logger.info('Autocompile enabled, compiling model...')
+
+    os.chdir(outputdir.absolute())
+
+    try:
+        completed_process = subprocess.run([
+            config.studiomdl,
+            Path(f"{filename}.qc"),
+        ], check=False, timeout=30, capture_output=True)
+
+        logger.info(completed_process.stdout.decode('ascii'))
+
+        if completed_process.returncode == 0:
+            logger.info(f"{outputdir / filename}.mdl compiled successfully!")
+        else:
+            logger.info('Something went wrong. Check the compiler output '
+                        + 'above for errors.')
+    except Exception:
+        logger.exception('Model compilation failed with exception')
+
+
+shutdown_logger(logger)
 
 if running_as_exe:
     input(enter_to_exit)
