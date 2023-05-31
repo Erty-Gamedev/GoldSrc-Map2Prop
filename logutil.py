@@ -5,14 +5,20 @@ Created on Tue May 30 10:50:51 2023
 @author: Erty
 """
 
-
+import os
+import sys
 import logging
 from pathlib import Path
 from datetime import datetime
 
 
 def get_logger(log_name: str):
-    logdir = Path('logs')
+    if getattr(sys, 'frozen', False):
+        app_dir = os.path.dirname(sys.executable)
+    elif __file__:
+        app_dir = os.path.dirname(__file__)
+
+    logdir = Path(app_dir) / 'logs'
     if not logdir.is_dir():
         logdir.mkdir()
 

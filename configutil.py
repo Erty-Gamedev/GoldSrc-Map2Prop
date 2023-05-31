@@ -5,6 +5,8 @@ Created on Tue May 30 21:59:28 2023
 @author: Erty
 """
 
+import os
+import sys
 import configparser
 from pathlib import Path
 
@@ -70,4 +72,9 @@ class ConfigUtil:
         }
 
 
-config = ConfigUtil(Path(__file__).parent / 'config.ini')
+if getattr(sys, 'frozen', False):
+    app_dir = os.path.dirname(sys.executable)
+elif __file__:
+    app_dir = os.path.dirname(__file__)
+
+config = ConfigUtil(Path(app_dir) / 'config.ini')
