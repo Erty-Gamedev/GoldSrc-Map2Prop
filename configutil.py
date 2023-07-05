@@ -44,15 +44,28 @@ class ConfigUtil:
         return [Path(wad) for wad in wads if wad != '']
 
     @property
+    def wad_cache(self) -> int:
+        return self.config['AppConfig'].getint('wad cache', 10)
+
+    @property
     def autocompile(self) -> bool:
         return self.config['AppConfig'].getboolean('autocompile', False)
+
+    @property
+    def smoothing(self) -> bool:
+        return self.config['AppConfig'].getboolean('smoothing', False)
+
+    @property
+    def smoothing_treshhold(self) -> float:
+        return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
 
     def __create_default_config(self):
         self.config['AppConfig'] = {
             'smoothing': 'no',
-            'smoothing threshold': 60,
+            'smoothing threshold': 60.0,
             'steam directory': r'C:\Program Files (x86)\Steam',
             'game config': 'halflife',
+            'wad cache': 10,
             'studiomdl': (r'%(steam directory)s\steamapps\common'
                           + r'\Sven Co-op SDK\modelling\studiomdl.exe'),
             'autocompile': 'yes',

@@ -86,6 +86,12 @@ def plane_rotation(normal, d):
     ])
 
 
+def rotate_2d(vector: tuple, degrees: float) -> tuple:
+    x, y = vector
+    th = np.deg2rad(degrees)
+    return x * np.cos(th) - y * np.sin(th), x * np.sin(th) + y * np.cos(th)
+
+
 def polygon_transpose(polygon, vector):
     new_poly = []
     for point in polygon:
@@ -115,11 +121,15 @@ def is_point_on_plane(point: Point, normal, k) -> bool:
         a*point.x + b*point.y + c*point.z + k) < 0.0078125
 
 
+def plane_normal(plane_points: tuple):
+    cross = segments_cross(*plane_points)
+    return cross / np.linalg.norm(cross)
+
+
 def polygon_to_plane(polygon: list):
     first_points = polygon[:3]
     first_point = first_points[0]
-    cross = segments_cross(*first_points)
-    normal = cross / np.linalg.norm(cross)
+    normal = plane_normal(first_points)
     k = -(
         normal[0]*first_point.x
         + normal[1]*first_point.y
