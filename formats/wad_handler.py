@@ -57,7 +57,7 @@ class WadHandler:
             globs.extend(self.__filedir.glob('*.wad'))
 
             # Filter out .wad files from skip list
-            for glob in self.__filedir.glob('*.wad'):
+            for glob in globs:
                 if glob.stem.lower() in cls.WAD_SKIP_LIST:
                     continue
                 wad_list.append(glob)
