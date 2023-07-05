@@ -6,6 +6,7 @@ Created on Tue Jul  4 19:01:21 2023
 """
 
 from pathlib import Path
+from collections import OrderedDict
 from logutil import get_logger, shutdown_logger
 from formats import Face
 from formats.wad3_reader import Wad3Reader, TextureEntry
@@ -33,7 +34,8 @@ class WadHandler:
         self.__logger = get_logger(__name__)
         self.__filedir = filedir
         self.__wad_list = None
-        self.wads = {}
+        self.__cache_size = config.wad_cache
+        self.wads = OrderedDict()
         self.__textures = {}
 
     def __del__(self):
@@ -68,6 +70,8 @@ class WadHandler:
 
     def __get_wad_reader(self, wad):
         if wad not in self.wads:
+            if self.__cache_size > 0 and len(self.wads) >= self.__cache_size:
+                self.wads.popitem(last=False)
             self.wads[wad] = Wad3Reader(wad)
         return self.wads[wad]
 
