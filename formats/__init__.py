@@ -10,24 +10,24 @@ from geoutil import np, Point, PolyPoint, plane_normal
 
 
 def read_byte(file) -> bytes:
-    return struct.unpack('b', file.read(1))[0]
+    return struct.unpack('<b', file.read(1))[0]
 
 
 def read_int(file) -> int:
-    return struct.unpack('i', file.read(4))[0]
+    return struct.unpack('<i', file.read(4))[0]
 
 
 def read_float(file) -> float:
-    return struct.unpack('f', file.read(4))[0]
+    return struct.unpack('<f', file.read(4))[0]
 
 
 def read_string(file, length: int) -> str:
-    return struct.unpack(f"{length}s", file.read(length))[0]
+    return struct.unpack(f"<{length}s", file.read(length))[0]
 
 
 def read_ntstring(file, length: int) -> str:
     """Reads a null-terminated string of a set length."""
-    strbytes = struct.unpack(f"{length}s", file.read(length))[0]
+    strbytes = struct.unpack(f"<{length}s", file.read(length))[0]
     string = ''
     for b in strbytes:
         if b == 0:
@@ -46,9 +46,9 @@ def read_lpstring(file) -> str:
 
 def read_colour(file) -> tuple:
     return (
-        struct.unpack('B', file.read(1))[0],
-        struct.unpack('B', file.read(1))[0],
-        struct.unpack('B', file.read(1))[0]
+        struct.unpack('<B', file.read(1))[0],
+        struct.unpack('<B', file.read(1))[0],
+        struct.unpack('<B', file.read(1))[0]
     )
 
 
