@@ -150,8 +150,12 @@ $sequence idle "{filename}"
 """)
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
-if config.autocompile and config.studiomdl.is_file():
-    if filereader.missing_textures:
+if config.autocompile:
+    if not config.studiomdl.is_file():
+        logger.info(
+            'Autocompile enabled, but could not proceed. '
+            + f"{config.studiomdl} was not found or is not a file.")
+    elif filereader.missing_textures:
         logger.info(
             'Autocompile enabled, but could not proceed. '
             + 'Model has missing textures. Check logs for more info.')
