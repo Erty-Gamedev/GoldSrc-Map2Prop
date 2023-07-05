@@ -10,6 +10,7 @@ from logutil import get_logger, shutdown_logger
 from geoutil import (Point, PolyPoint, PolyFace,
                      InvalidSolidException, triangulate_face)
 from formats.wad3_reader import Wad3Reader
+from formats.wad_handler import WadHandler
 from configutil import config
 
 
@@ -52,7 +53,7 @@ def parseCoord(coord: str) -> list:
 
 
 class ObjReader:
-    __wads = None
+    """Reads an .obj format file and parses geometry data."""
 
     def __init__(self, filepath: Path):
         self.filepath = filepath
@@ -67,62 +68,19 @@ class ObjReader:
         self.allfaces = []
         self.allpolypoints = []
         self.vn_map = {}
+        self.__checked = []
+        self.missing_textures = False
 
         self.__logger = get_logger(__name__)
         self.__filedir = self.filepath.parents[0]
+        self.wadhandler = WadHandler(self.__filedir)
 
         self.__readfile()
 
         shutdown_logger(self.__logger)
 
-    @classmethod
-    def __get_wads(cls, filedir: Path) -> list:
-        if cls.__wads is None:
-            cls.__wads = []
-
-            if config.wad_list:
-                for wad in config.wad_list:
-                    cls.__wads.append(Wad3Reader(wad))
-                return cls.__wads
-
-            checked_wads = []
-
-            if config.mod_path:
-                globs = config.mod_path.glob('*.wad')
-                for glob in globs:
-                    if glob.stem.lower() in WAD_SKIP_LIST:
-                        continue
-                    cls.__wads.append(Wad3Reader(glob))
-                    checked_wads.append(glob.stem)
-
-            globs = filedir.glob('*.wad')
-            for glob in globs:
-                if glob.stem.lower() in WAD_SKIP_LIST or (
-                        glob.stem in checked_wads):
-                    continue
-                cls.__wads.append(Wad3Reader(glob))
-        return cls.__wads
-
-    def __check_texture(self, texture: str) -> str:
-        texfile = f"{texture}.bmp"
-        if not (self.__filedir / texfile).exists():
-            self.__logger.info(f"""\
-Texture {texture}.bmp not found in .obj file's directory. \
-Searching directory for .wad packages...""")
-            found = False
-            for wad in self.__class__.__get_wads(self.__filedir):
-                if texture in wad:
-                    self.__logger.info(f"""\
-Extracting {texture} from {wad.file}.""")
-                    wad[texture].save(self.__filedir / texfile)
-                    found = True
-
-            if found is False:
-                self.__logger.info(f"""\
-Texture {texture} not found in neither .obj file's directory \
-or any .wad packages within that directory. Please place the .wad package \
-containing the texture in the .obj file's directory and re-run the \
-application or extract the textures manually prior to compilation.""")
+    def __del__(self):
+        shutdown_logger(self.__logger)
 
     def __readfile(self):
         with self.filepath.open('r') as objfile:
@@ -166,13 +124,16 @@ application or extract the textures manually prior to compilation.""")
                 elif line.startswith(usemtl_prefix):
                     tex = line[len(usemtl_prefix):]
 
-                    if tex.lower() in SKIP_TEXTURES:
-                        continue
+                    # Check if texture exists, or try to extract it if not
+                    if tex not in self.__checked:
+                        if not self.wadhandler.check_texture(tex):
+                            self.missing_textures = True
 
-                    self.__check_texture(tex)
-
-                    if tex.startswith('{') and tex not in self.maskedtextures:
-                        self.maskedtextures.append(tex)
+                        # Make note of masked textures
+                        if (tex.startswith('{')
+                                and tex not in self.maskedtextures):
+                            self.maskedtextures.append(tex)
+                        self.__checked.append(tex)
 
                 # Parse faces:
                 elif line.startswith(poly_face_prefix):
