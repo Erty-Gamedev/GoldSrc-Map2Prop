@@ -15,11 +15,11 @@ from logutil import get_logger, shutdown_logger
 from geoutil import Point, average_normals, average_near_normals
 from configutil import config
 from formats.obj_reader import ObjReader
+from formats.rmf_reader import RmfReader
 
 
 logger = get_logger(__name__)
 enter_to_exit = 'Press Enter to exit...'
-supported_formats = ('.obj', '.rmf')
 
 running_as_exe = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
@@ -29,41 +29,54 @@ except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
         input(enter_to_exit)
-        raise RuntimeError('No file provided')
+        raise Exception('No file provided')
     else:
         filename = r'test/cratetest.obj'
+
 filepath = Path(filename)
 extension = filepath.suffix.lower()
 
-if extension not in supported_formats:
+if extension == '.obj':
+    filereader = ObjReader(filepath)
+elif extension == '.rmf':
+    filereader = RmfReader(filepath)
+elif extension == '.jmf':
+    raise Exception('Not yet supported')
+else:
     logger.info(
-        f"Invalid file type. Must be .obj or .rmf, was {filepath.suffix}")
+        'Invalid file type. Must be .obj or .rmf, '
+        + f"was {filepath.suffix}")
     if running_as_exe:
         input(enter_to_exit)
-    raise RuntimeError('File type must be .obj or .rmf!')
+    raise ('File type must be .obj or .rmf!')
+
 
 filedir = filepath.parents[0]
 filename = filepath.stem
 outputdir = filedir
 
 
-if extension == '.obj':
-    filereader = ObjReader(filepath)
-
-
 # Create .smd
 if not outputdir.is_dir():
     outputdir.mkdir()
 
+smooth = False
+smoothing = 0.0
+if config.smoothing:
+    smooth = True
+    smoothing = config.smoothing_treshhold
 
+# If set with filename, let it override config
 if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
+    smooth = True
     smoothing = match.group(0)[len('_smooth'):]
     if smoothing == '':
-        smoothing = 0
+        smoothing = 0.0
     else:
         smoothing = int(smoothing)
 
-    if smoothing > 0:
+if smooth:
+    if smoothing > 0.0:
         averaged_normals = {}
         smooth_rad = np.deg2rad(smoothing)
 
@@ -99,9 +112,14 @@ triangles
 
         for p in face.polypoints:
             line = "0\t"
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, -p.v.z, p.v.y)
-            line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, -p.n.z, p.n.y)
-            line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
+            if extension == '.obj':
+                line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, -p.v.z, p.v.y)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, -p.n.z, p.n.y)
+                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
+            else:
+                line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, p.v.y, p.v.z)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, p.n.y, p.n.z)
+                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
             output.write(line + "\n")
 
     output.write('end' + "\n")
@@ -133,25 +151,32 @@ $sequence idle "{filename}"
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
 if config.autocompile and config.studiomdl.is_file():
-    logger.info('Autocompile enabled, compiling model...')
+    if filereader.missing_textures:
+        logger.info(
+            'Autocompile enabled, but could not proceed. '
+            + 'Model has missing textures. Check logs for more info.')
+    else:
+        logger.info('Autocompile enabled, compiling model...')
 
-    os.chdir(outputdir.absolute())
+        os.chdir(outputdir.absolute())
 
-    try:
-        completed_process = subprocess.run([
-            config.studiomdl,
-            Path(f"{filename}.qc"),
-        ], check=False, timeout=30, capture_output=True)
+        try:
+            completed_process = subprocess.run([
+                config.studiomdl,
+                Path(f"{filename}.qc"),
+            ], check=False, timeout=30, capture_output=True)
 
-        logger.info(completed_process.stdout.decode('ascii'))
+            logger.info(completed_process.stdout.decode('ascii'))
 
-        if completed_process.returncode == 0:
-            logger.info(f"{outputdir / filename}.mdl compiled successfully!")
-        else:
-            logger.info('Something went wrong. Check the compiler output '
-                        + 'above for errors.')
-    except Exception:
-        logger.exception('Model compilation failed with exception')
+            if completed_process.returncode == 0:
+                logger.info(
+                    f"{outputdir / filename}.mdl compiled successfully!")
+            else:
+                logger.info(
+                    'Something went wrong. Check the compiler output '
+                    + 'above for errors.')
+        except Exception:
+            logger.exception('Model compilation failed with exception')
 
 
 shutdown_logger(logger)

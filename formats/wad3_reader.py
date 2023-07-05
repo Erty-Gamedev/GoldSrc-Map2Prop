@@ -8,7 +8,7 @@ Created on Fri May 26 17:18:27 2023
 
 from pathlib import Path
 from PIL import Image
-import struct
+from formats import InvalidFormatException, struct
 
 
 PALETTE_SIZE = 768  # 256 * 3
@@ -56,15 +56,15 @@ class Wad3Reader:
     """
 
     def __init__(self, file: Path):
+        self.file = file
         with file.open('rb') as wadfile:
-            self.file = file
-
             data = wadfile.read()
 
             header = data[0:12]
             magic = header[0:4]
             if magic != bytes('WAD3', 'ascii'):
-                raise Exception(f"{file} is not a valid WAD3 file.")
+                raise InvalidFormatException(
+                    f"{file} is not a valid WAD3 file.")
 
             num_dir_entries = struct.unpack('l', header[4:8])[0]
             dir_offset = struct.unpack('l', header[8:])[0]
