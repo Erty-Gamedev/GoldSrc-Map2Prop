@@ -13,6 +13,10 @@ def read_byte(file) -> bytes:
     return struct.unpack('<b', file.read(1))[0]
 
 
+def read_short(file) -> bytes:
+    return struct.unpack('<h', file.read(2))[0]
+
+
 def read_int(file) -> int:
     return struct.unpack('<i', file.read(4))[0]
 
@@ -44,11 +48,31 @@ def read_lpstring(file) -> str:
     return read_ntstring(file, strlen)
 
 
+def read_lpstring2(file) -> str:
+    """Reads a 4-byte length-prefixed ascii string."""
+    buffer = file.read(4)
+    if len(buffer) < 4:
+        raise EndOfFileException()
+    strlen = struct.unpack('<i', buffer)[0]
+    if strlen == -1:
+        return ''
+    return read_ntstring(file, strlen)
+
+
 def read_colour(file) -> tuple:
     return (
         struct.unpack('<B', file.read(1))[0],
         struct.unpack('<B', file.read(1))[0],
         struct.unpack('<B', file.read(1))[0]
+    )
+
+
+def read_colour_rgba(file) -> tuple:
+    return (
+        struct.unpack('<B', file.read(1))[0],
+        struct.unpack('<B', file.read(1))[0],
+        struct.unpack('<B', file.read(1))[0],
+        struct.unpack('<B', file.read(1))[0],
     )
 
 
@@ -60,7 +84,15 @@ def read_vector3D(file) -> tuple:
     )
 
 
+def read_angles(file):
+    return read_vector3D(file)
+
+
 class InvalidFormatException(Exception):
+    pass
+
+
+class EndOfFileException(Exception):
     pass
 
 
@@ -100,6 +132,12 @@ class Group(MapObject):
     def __init__(self, colour: tuple, objects: list):
         super().__init__(colour)
         self.objects = objects
+
+
+class JGroup:
+    def __init__(self, colour: tuple, id: int):
+        self.colour = colour
+        self.id = id
 
 
 class Plane:
