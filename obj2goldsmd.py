@@ -16,6 +16,7 @@ from geoutil import Point, average_normals, average_near_normals
 from configutil import config
 from formats.obj_reader import ObjReader
 from formats.rmf_reader import RmfReader
+from formats.jmf_reader import JmfReader
 
 
 logger = get_logger(__name__)
@@ -41,14 +42,14 @@ if extension == '.obj':
 elif extension == '.rmf':
     filereader = RmfReader(filepath)
 elif extension == '.jmf':
-    raise Exception('Not yet supported')
+    filereader = JmfReader(filepath)
 else:
     logger.info(
-        'Invalid file type. Must be .obj or .rmf, '
+        'Invalid file type. Must be .obj, .rmf, or .jmf, but '
         + f"was {filepath.suffix}")
     if running_as_exe:
         input(enter_to_exit)
-    raise ('File type must be .obj or .rmf!')
+    raise ('File type must be .obj, .rmf, or .jmf!')
 
 
 filedir = filepath.parents[0]
