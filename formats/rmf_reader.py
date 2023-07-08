@@ -81,7 +81,7 @@ class RmfReader:
             for i in range(path_count):
                 self.entity_paths.append(self.__readpath(mapfile))
 
-    def __readvisgroup(self, file):
+    def __readvisgroup(self, file) -> VisGroup:
         name = read_ntstring(file, 128)
         colour = read_colour(file)
         file.read(1)  # Padding byte
@@ -240,7 +240,7 @@ class RmfReader:
         return Entity(brushes, colour, classname, flags,
                       properties, origin), visgroup_id
 
-    def __readgroup(self, file) -> Group:
+    def __readgroup(self, file) -> tuple:
         visgroup_id = read_int(file)
         colour = read_colour(file)
         group = Group(colour, [])
