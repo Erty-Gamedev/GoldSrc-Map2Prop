@@ -12,6 +12,7 @@ from formats import (read_byte, read_int, read_short, read_float,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
+                     MissingTextureException,
                      Face, VisGroup, Brush, Entity, JGroup)
 from formats.wad_handler import WadHandler
 
@@ -315,7 +316,8 @@ class JmfReader:
         if texture not in self.__textures:
             texfile = self.__filedir / f"{texture}.bmp"
             if not texfile.exists():
-                raise Exception(f"Could not find texture {texture}")
+                raise MissingTextureException(
+                    f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
                 self.__textures[texture] = {

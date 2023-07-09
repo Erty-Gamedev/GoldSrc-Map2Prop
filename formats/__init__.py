@@ -96,6 +96,10 @@ class EndOfFileException(Exception):
     pass
 
 
+class MissingTextureException(Exception):
+    pass
+
+
 class VisGroup:
     def __init__(self, id: int, name: str, colour: tuple, visible: bool):
         self.id = id

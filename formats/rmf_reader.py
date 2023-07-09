@@ -10,7 +10,7 @@ from pathlib import Path
 from geoutil import (PolyFace, InvalidSolidException, triangulate_face)
 from formats import (read_byte, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
-                     InvalidFormatException,
+                     InvalidFormatException, MissingTextureException,
                      Face, VisGroup, MapObject, Brush, Entity, Group,
                      EntityPath, PathNode)
 from formats.wad_handler import WadHandler
@@ -154,7 +154,8 @@ class RmfReader:
         if texture not in self.__textures:
             texfile = self.__filedir / f"{texture}.bmp"
             if not texfile.exists():
-                raise Exception(f"Could not find texture {texture}")
+                raise MissingTextureException(
+                    f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
                 self.__textures[texture] = {

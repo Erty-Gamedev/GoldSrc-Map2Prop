@@ -7,12 +7,15 @@ Created on Tue May 30 21:59:28 2023
 
 import os
 import sys
+import argparse
 import configparser
+from logutil import get_logger, shutdown_logger
 from pathlib import Path
 
 
 class ConfigUtil:
     def __init__(self, filepath: Path):
+        self.args = None
         self.config = configparser.ConfigParser()
         if filepath.exists():
             self.config.read(filepath)
@@ -21,16 +24,68 @@ class ConfigUtil:
             with filepath.open('w') as configfile:
                 self.config.write(configfile)
 
+    def parseargs(self, running_as_exe: bool):
+        parser = argparse.ArgumentParser(
+            prog='GoldSrc Map2Prop',
+            description='Converts a .rmf/.jmf or J.A.C.K .obj into goldsrc\
+.smd files for model creation.',
+            exit_on_error=False
+        )
+
+        if True or running_as_exe:
+            parser.add_argument('input', nargs='?', type=str,
+                                help='.rmf/.jmf/.obj file to convert')
+
+        parser.add_argument('-o', '--output', type=str,
+                            help='specify an output directory')
+        parser.add_argument('-g', '--game_config', type=str,
+                            help='game setup to use from config.ini')
+        parser.add_argument('-m', '--studiomdl', type=str,
+                            help='path to SC studiomdl.exe')
+        parser.add_argument('-w', '--wad_list', type=str,
+                            help='path to text file listing .wad files')
+        parser.add_argument('-c', '--wad_cache', type=int,
+                            help='max number of .wad files to keep in memory',)
+        parser.add_argument('-a', '--autocompile', action='store_true',
+                            help='compile model after conversion')
+        parser.add_argument('-s', '--smoothing', action='store_true',
+                            help='apply smooth shading to model')
+        parser.add_argument('-t', '--smoothing_threshold', type=float,
+                            help='angle threshold for applying smoothing')
+
+        self.args = parser.parse_args()
+        if self.args.input is None:
+            raise IndexError()
+        self.input = self.args.input
+
+    @property
+    def output_dir(self) -> Path:
+        if self.args.output:
+            path = self.args.output
+        else:
+            path = self.config['AppConfig'].get('output directory', None)
+        return path if path is None else Path(path)
+
+    @property
+    def game_config(self) -> str:
+        if self.args.game_config:
+            return self.args.game_config
+        return self.config['AppConfig'].get('game config', False)
+
     @property
     def studiomdl(self) -> Path:
-        return Path(self.config['AppConfig'].get('studiomdl', False))
+        if self.args.studiomdl:
+            return Path(self.args.studiomdl)
+        if studiomdl := (self.config['AppConfig'].get('studiomdl', False)):
+            return Path(studiomdl)
+        return None
 
     @property
     def mod_path(self) -> Path:
-        game = self.config['AppConfig'].get('game config', False)
+        game = self.game_config
         steamdir = self.config['AppConfig'].get('steam directory', False)
 
-        if not (game and steamdir):
+        if not game or not steamdir:
             return None
 
         return (Path(steamdir) / r'steamapps\common'
@@ -39,30 +94,41 @@ class ConfigUtil:
 
     @property
     def wad_list(self) -> list:
+        if self.args.wad_list:
+            with Path(self.args.wad_list).open('r') as file:
+                return [Path(wad.rstrip()) for wad
+                        in list(file) if wad.rstrip() != '']
         wads = (self.config['AppConfig'].get('wad list', '').rstrip(' ,')
                 .replace("\n", '').split(','))
         return [Path(wad) for wad in wads if wad != '']
 
     @property
     def wad_cache(self) -> int:
+        if self.args.wad_cache:
+            return self.args.wad_cache
         return self.config['AppConfig'].getint('wad cache', 10)
 
     @property
     def autocompile(self) -> bool:
-        return self.config['AppConfig'].getboolean('autocompile', False)
+        return (self.args.autocompile
+                or self.config['AppConfig'].getboolean('autocompile', False))
 
     @property
     def smoothing(self) -> bool:
-        return self.config['AppConfig'].getboolean('smoothing', False)
+        return (self.args.smoothing
+                or self.config['AppConfig'].getboolean('smoothing', False))
 
     @property
     def smoothing_treshhold(self) -> float:
+        if self.args.smoothing_threshold:
+            return self.args.smoothing_threshold
         return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
 
     def __create_default_config(self):
         self.config['AppConfig'] = {
             'smoothing': 'no',
             'smoothing threshold': 60.0,
+            'output directory': r'\converted',
             'steam directory': r'C:\Program Files (x86)\Steam',
             'game config': 'halflife',
             'wad cache': 10,
@@ -90,4 +156,15 @@ if getattr(sys, 'frozen', False):
 elif __file__:
     app_dir = os.path.dirname(__file__)
 
-config = ConfigUtil(Path(app_dir) / 'config.ini')
+logger = get_logger(__name__)
+try:
+    config = ConfigUtil(Path(app_dir) / 'config.ini')
+except configparser.DuplicateOptionError:
+    logger.exception('Config file parsing failed.')
+    logger.info('If using wad_list in config.ini, make sure each '
+                + "consequtive line is left-aligned with the first line.\n")
+    config = None
+except Exception:
+    logger.exception('Config file parsing failed.')
+    config = None
+shutdown_logger(logger)

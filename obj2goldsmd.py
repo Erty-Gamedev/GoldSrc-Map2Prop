@@ -14,6 +14,7 @@ from pathlib import Path
 from logutil import get_logger, shutdown_logger
 from geoutil import Point, average_normals, average_near_normals
 from configutil import config
+from formats import InvalidFormatException, MissingTextureException
 from formats.obj_reader import ObjReader
 from formats.rmf_reader import RmfReader
 from formats.jmf_reader import JmfReader
@@ -24,37 +25,54 @@ enter_to_exit = 'Press Enter to exit...'
 
 running_as_exe = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
+if config is None:
+    if running_as_exe:
+        input(enter_to_exit)
+    raise Exception('Could not parse config file. See logs.')
+
 try:
-    filename = sys.argv[1]
+    config.parseargs(running_as_exe)
+    filename = config.input
 except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
         input(enter_to_exit)
-        raise Exception('No file provided')
+        sys.exit()
     else:
         filename = r'test/cratetest.obj'
 
 filepath = Path(filename)
 extension = filepath.suffix.lower()
 
-if extension == '.obj':
-    filereader = ObjReader(filepath)
-elif extension == '.rmf':
-    filereader = RmfReader(filepath)
-elif extension == '.jmf':
-    filereader = JmfReader(filepath)
-else:
-    logger.info(
-        'Invalid file type. Must be .obj, .rmf, or .jmf, but '
-        + f"was {filepath.suffix}")
+try:
+    if extension == '.obj':
+        filereader = ObjReader(filepath)
+    elif extension == '.rmf':
+        filereader = RmfReader(filepath)
+    elif extension == '.jmf':
+        filereader = JmfReader(filepath)
+    else:
+        logger.info(
+            'Invalid file type. Must be .obj, .rmf, or .jmf, but '
+            + f"was {filepath.suffix}")
+        if running_as_exe:
+            input(enter_to_exit)
+        raise Exception('File type must be .obj, .rmf, or .jmf!')
+except MissingTextureException as e:
+    logger.info(e)
     if running_as_exe:
         input(enter_to_exit)
-    raise ('File type must be .obj, .rmf, or .jmf!')
+    sys.exit()
+except InvalidFormatException as e:
+    logger.info(e)
+    if running_as_exe:
+        input(enter_to_exit)
+    sys.exit()
 
 
 filedir = filepath.parents[0]
 filename = filepath.stem
-outputdir = filedir
+outputdir = config.output_dir if config.output_dir is not None else filedir
 
 
 # Create .smd
@@ -152,7 +170,7 @@ $sequence idle "{filename}"
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
 if config.autocompile:
-    if not config.studiomdl.is_file():
+    if not config.studiomdl or not config.studiomdl.is_file():
         logger.info(
             'Autocompile enabled, but could not proceed. '
             + f"{config.studiomdl} was not found or is not a file.")
