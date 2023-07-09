@@ -100,9 +100,9 @@ Searching directory for .wad packages...""")
 
             if (check := self.__check_wads(texture)) is False:
                 self.__logger.info(f"""\
-Texture {texture} not found in neither .obj file's directory \
+Texture {texture} not found in neither input file's directory \
 or any .wad packages within that directory. Please place the .wad package \
-containing the texture in the .obj file's directory and re-run the \
+containing the texture in the input file's directory and re-run the \
 application or extract the textures manually prior to compilation.""")
         return check
 
