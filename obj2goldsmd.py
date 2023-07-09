@@ -14,6 +14,7 @@ from pathlib import Path
 from logutil import get_logger, shutdown_logger
 from geoutil import Point, average_normals, average_near_normals
 from configutil import config
+from formats import InvalidFormatException, MissingTextureException
 from formats.obj_reader import ObjReader
 from formats.rmf_reader import RmfReader
 from formats.jmf_reader import JmfReader
@@ -37,19 +38,30 @@ except IndexError:
 filepath = Path(filename)
 extension = filepath.suffix.lower()
 
-if extension == '.obj':
-    filereader = ObjReader(filepath)
-elif extension == '.rmf':
-    filereader = RmfReader(filepath)
-elif extension == '.jmf':
-    filereader = JmfReader(filepath)
-else:
-    logger.info(
-        'Invalid file type. Must be .obj, .rmf, or .jmf, but '
-        + f"was {filepath.suffix}")
+try:
+    if extension == '.obj':
+        filereader = ObjReader(filepath)
+    elif extension == '.rmf':
+        filereader = RmfReader(filepath)
+    elif extension == '.jmf':
+        filereader = JmfReader(filepath)
+    else:
+        logger.info(
+            'Invalid file type. Must be .obj, .rmf, or .jmf, but '
+            + f"was {filepath.suffix}")
+        if running_as_exe:
+            input(enter_to_exit)
+        raise Exception('File type must be .obj, .rmf, or .jmf!')
+except MissingTextureException as e:
+    logger.info(e)
     if running_as_exe:
         input(enter_to_exit)
-    raise ('File type must be .obj, .rmf, or .jmf!')
+    sys.exit()
+except InvalidFormatException as e:
+    logger.info(e)
+    if running_as_exe:
+        input(enter_to_exit)
+    sys.exit()
 
 
 filedir = filepath.parents[0]
