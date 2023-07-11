@@ -151,9 +151,7 @@ class Plane:
 class Face:
     def __init__(self, vertices: list, plane_points: list, texture: dict):
         self.vertices = vertices
-        self.vertices.reverse()
         self.plane_points = [Point(*p) for p in plane_points]
-        self.plane_points.reverse()
         self.texture = texture
         self.plane_normal = plane_normal(self.plane_points)
 

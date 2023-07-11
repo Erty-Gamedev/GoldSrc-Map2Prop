@@ -282,7 +282,6 @@ class JmfReader:
             read_float(file)
             read_float(file)
 
-        vertices.reverse()
         plane_points = vertices[:3]
 
         return Face(vertices, plane_points, texture)
