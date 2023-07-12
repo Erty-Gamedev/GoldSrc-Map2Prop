@@ -13,6 +13,9 @@ from logutil import get_logger, shutdown_logger
 from pathlib import Path
 
 
+VERSION = '0.7.1-alpha'
+
+
 class ConfigUtil:
     def __init__(self, filepath: Path):
         self.args = None
@@ -38,48 +41,49 @@ class ConfigUtil:
         if True or running_as_exe:
             self.parser.add_argument('input', nargs='?', type=str,
                                      help='.rmf/.jmf/.obj file to convert')
+        self.parser.add_argument(
+            '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
+            help='display current version')
 
-        # App / model general arguments
-        self.parser.add_argument(
-            '-o', '--output', type=str,
+        general = self.parser.add_argument_group('general arguments')
+        general.add_argument(
+            '-o', '--output', type=str, metavar='',
             help='specify an output directory')
-        self.parser.add_argument(
-            '-g', '--game_config', type=str,
+        general.add_argument(
+            '-g', '--game_config', type=str, metavar='',
             help='game setup to use from config.ini')
-        self.parser.add_argument(
-            '-m', '--studiomdl', type=str,
+        general.add_argument(
+            '-m', '--studiomdl', type=str, metavar='',
             help='path to SC studiomdl.exe')
-        self.parser.add_argument(
-            '-w', '--wad_list', type=str,
+        general.add_argument(
+            '-w', '--wad_list', type=str, metavar='',
             help='path to text file listing .wad files')
-        self.parser.add_argument(
-            '-c', '--wad_cache', type=int,
+        general.add_argument(
+            '-c', '--wad_cache', type=int, metavar='',
             help='max number of .wad files to keep in memory',)
-        self.parser.add_argument(
+        general.add_argument(
+            '-s', '--smoothing', type=float, default=0.0, metavar='',
+            help='angle threshold for applying smoothing '
+                 + '(use %(default)s to smooth all edges)')
+        general.add_argument(
             '-a', '--autocompile', action='store_true',
             help='compile model after conversion')
-        self.parser.add_argument(
-            '-s', '--smoothing', action='store_true',
-            help='apply smooth shading to model')
-        self.parser.add_argument(
-            '-t', '--smoothing_threshold', type=float,
-            help='angle threshold for applying smoothing')
 
-        # .qc specific arguments
-        self.parser.add_argument(
-            '--outputname', type=str,
+        qc = self.parser.add_argument_group('.qc options')
+        qc.add_argument(
+            '--outputname', type=str, metavar='',
             help='filename for the finished model')
-        self.parser.add_argument(
-            '--scale', type=float,
+        qc.add_argument(
+            '--scale', type=float, metavar='1.0',
             help='scale the model by this amount')
-        self.parser.add_argument(
-            '--gamma', type=float,
-            help='darken/brighten textures (default 1.8)')
-        self.parser.add_argument(
-            '--offset', nargs=3,
+        qc.add_argument(
+            '--gamma', type=float, metavar='1.8', default=1.8,
+            help='darken/brighten textures (default %(default)s)')
+        qc.add_argument(
+            '--offset', nargs=3, metavar=('x', 'y', 'z'),
             help='X Y Z offset to apply to the model')
-        self.parser.add_argument(
-            '--rotate', type=float,
+        qc.add_argument(
+            '--rotate', type=float, metavar='0.0',
             help='rotate the model by this many degrees')
 
         self.args = self.parser.parse_args()
@@ -171,8 +175,8 @@ class ConfigUtil:
 
     @property
     def smoothing_treshhold(self) -> float:
-        if self.args.smoothing_threshold:
-            return self.args.smoothing_threshold
+        if self.args.smoothing:
+            return self.args.smoothing
         return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
 
     def __create_default_config(self):
