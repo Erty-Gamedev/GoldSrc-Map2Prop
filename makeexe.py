@@ -8,9 +8,9 @@ Created on Wed May 24 17:22:48 2023
 import PyInstaller.__main__
 
 PyInstaller.__main__.run([
-    'obj2goldsmd.py',
+    'map2prop.py',
     '--onefile',
     '-c',
-    '-i', 'o2gs.ico',
-    '-n', 'Obj2GoldSmd',
+    '-i', 'm2p.ico',
+    '-n', 'Map2Prop',
 ])
