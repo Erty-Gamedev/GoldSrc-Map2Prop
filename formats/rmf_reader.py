@@ -19,7 +19,7 @@ from formats.wad_handler import WadHandler
 class RmfReader:
     """Reads a .rmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
         self.visgroups = {}
         self.entities = []
@@ -38,7 +38,7 @@ class RmfReader:
         self.missing_textures = False
 
         self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir)
+        self.wadhandler = WadHandler(self.__filedir, outputdir)
 
         self.__parse()
 

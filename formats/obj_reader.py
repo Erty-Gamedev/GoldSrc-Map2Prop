@@ -9,9 +9,7 @@ from pathlib import Path
 from logutil import get_logger, shutdown_logger
 from geoutil import (Point, PolyPoint, PolyFace,
                      InvalidSolidException, triangulate_face)
-from formats.wad3_reader import Wad3Reader
 from formats.wad_handler import WadHandler
-from configutil import config
 
 
 WAD_SKIP_LIST = [
@@ -55,7 +53,7 @@ def parseCoord(coord: str) -> list:
 class ObjReader:
     """Reads an .obj format file and parses geometry data."""
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
 
         self.vertexcoords = []
@@ -73,7 +71,7 @@ class ObjReader:
 
         self.__logger = get_logger(__name__)
         self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir)
+        self.wadhandler = WadHandler(self.__filedir, outputdir)
 
         self.__readfile()
 

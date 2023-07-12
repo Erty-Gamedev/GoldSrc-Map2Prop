@@ -20,7 +20,7 @@ from formats.wad_handler import WadHandler
 class JmfReader:
     """Reads a .jmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
         self.visgroups = {}
         self.entities = []
@@ -40,7 +40,7 @@ class JmfReader:
         self.missing_textures = False
 
         self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir)
+        self.wadhandler = WadHandler(self.__filedir, outputdir)
 
         self.__parse()
 
