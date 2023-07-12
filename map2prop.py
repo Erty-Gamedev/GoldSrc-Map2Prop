@@ -168,7 +168,7 @@ $scale {config.qc_scale}
 $origin {config.qc_offset} {config.qc_rotate}
 {rendermodes}$gamma {config.qc_gamma}
 $body studio "{filename}"
-$sequence idle "{filename}"
+$sequence "Generated_with_Erty's_Map2Prop" "{filename}"
 """)
     logger.info(f"Successfully written to {outputdir / filename}.qc")
 
