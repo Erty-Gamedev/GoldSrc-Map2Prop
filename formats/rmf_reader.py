@@ -202,12 +202,14 @@ class RmfReader:
         vertex_count = read_int(file)
         for i in range(vertex_count):
             vertices.append(read_vector3D(file))
+        vertices.reverse()
 
-        plane_points = (
+        plane_points = [
             read_vector3D(file),
             read_vector3D(file),
             read_vector3D(file),
-        )
+        ]
+        plane_points.reverse()
 
         return Face(vertices, plane_points, texture)
 

@@ -138,7 +138,7 @@ triangles
             else:
                 line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, p.v.y, p.v.z)
                 line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, p.n.y, p.n.z)
-                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
+                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y)
             output.write(line + "\n")
 
     output.write('end' + "\n")
