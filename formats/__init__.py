@@ -96,6 +96,10 @@ class EndOfFileException(Exception):
     pass
 
 
+class MissingTextureException(Exception):
+    pass
+
+
 class VisGroup:
     def __init__(self, id: int, name: str, colour: tuple, visible: bool):
         self.id = id
@@ -147,9 +151,7 @@ class Plane:
 class Face:
     def __init__(self, vertices: list, plane_points: list, texture: dict):
         self.vertices = vertices
-        self.vertices.reverse()
         self.plane_points = [Point(*p) for p in plane_points]
-        self.plane_points.reverse()
         self.texture = texture
         self.plane_normal = plane_normal(self.plane_points)
 
@@ -175,8 +177,8 @@ class Face:
 
         projected = vertex - (np.dot(vertex, plane_normal) * plane_normal)
 
-        u = self.texture['shiftx']
-        v = -self.texture['shifty']
+        u = self.texture['shiftx'] * self.texture['scalex']
+        v = -self.texture['shifty'] * self.texture['scaley']
 
         u += np.dot(projected, self.texture['rightaxis'])
         v -= np.dot(projected, self.texture['downaxis'])

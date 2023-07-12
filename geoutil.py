@@ -53,10 +53,8 @@ def segments_cross(a: Point, b: Point, c: Point):
 
 
 def vectors_angle(a: Point, b: Point):
-    return np.arccos(
-        np.dot(a, b)
-        / np.linalg.norm(a) * np.linalg.norm(b)
-    )
+    return np.arccos(np.clip(
+            np.dot(a, b) / np.linalg.norm(a) * np.linalg.norm(b), -1, 1))
 
 
 def segments_angle(a: Point, b: Point, c: Point):

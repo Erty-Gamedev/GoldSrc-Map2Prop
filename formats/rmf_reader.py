@@ -10,7 +10,7 @@ from pathlib import Path
 from geoutil import (PolyFace, InvalidSolidException, triangulate_face)
 from formats import (read_byte, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
-                     InvalidFormatException,
+                     InvalidFormatException, MissingTextureException,
                      Face, VisGroup, MapObject, Brush, Entity, Group,
                      EntityPath, PathNode)
 from formats.wad_handler import WadHandler
@@ -19,7 +19,7 @@ from formats.wad_handler import WadHandler
 class RmfReader:
     """Reads a .rmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
         self.visgroups = {}
         self.entities = []
@@ -38,7 +38,7 @@ class RmfReader:
         self.missing_textures = False
 
         self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir)
+        self.wadhandler = WadHandler(self.__filedir, outputdir)
 
         self.__parse()
 
@@ -154,7 +154,8 @@ class RmfReader:
         if texture not in self.__textures:
             texfile = self.__filedir / f"{texture}.bmp"
             if not texfile.exists():
-                raise Exception(f"Could not find texture {texture}")
+                raise MissingTextureException(
+                    f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
                 self.__textures[texture] = {
@@ -201,12 +202,14 @@ class RmfReader:
         vertex_count = read_int(file)
         for i in range(vertex_count):
             vertices.append(read_vector3D(file))
+        vertices.reverse()
 
-        plane_points = (
+        plane_points = [
             read_vector3D(file),
             read_vector3D(file),
             read_vector3D(file),
-        )
+        ]
+        plane_points.reverse()
 
         return Face(vertices, plane_points, texture)
 

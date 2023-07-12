@@ -12,6 +12,7 @@ from formats import (read_byte, read_int, read_short, read_float,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
+                     MissingTextureException,
                      Face, VisGroup, Brush, Entity, JGroup)
 from formats.wad_handler import WadHandler
 
@@ -19,7 +20,7 @@ from formats.wad_handler import WadHandler
 class JmfReader:
     """Reads a .jmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path):
+    def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
         self.visgroups = {}
         self.entities = []
@@ -39,7 +40,7 @@ class JmfReader:
         self.missing_textures = False
 
         self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir)
+        self.wadhandler = WadHandler(self.__filedir, outputdir)
 
         self.__parse()
 
@@ -281,7 +282,6 @@ class JmfReader:
             read_float(file)
             read_float(file)
 
-        vertices.reverse()
         plane_points = vertices[:3]
 
         return Face(vertices, plane_points, texture)
@@ -315,7 +315,8 @@ class JmfReader:
         if texture not in self.__textures:
             texfile = self.__filedir / f"{texture}.bmp"
             if not texfile.exists():
-                raise Exception(f"Could not find texture {texture}")
+                raise MissingTextureException(
+                    f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
                 self.__textures[texture] = {
