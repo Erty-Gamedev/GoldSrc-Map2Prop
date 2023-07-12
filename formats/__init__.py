@@ -177,8 +177,8 @@ class Face:
 
         projected = vertex - (np.dot(vertex, plane_normal) * plane_normal)
 
-        u = self.texture['shiftx']
-        v = -self.texture['shifty']
+        u = self.texture['shiftx'] * self.texture['scalex']
+        v = -self.texture['shifty'] * self.texture['scaley']
 
         u += np.dot(projected, self.texture['rightaxis'])
         v -= np.dot(projected, self.texture['downaxis'])
