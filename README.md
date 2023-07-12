@@ -6,7 +6,7 @@ GoldSrc Map2Prop is a tool for converting .rmf and .jmf files, as well as .obj f
 
 ## Installation
 
-No installation required, simply get the latest executable from [Releases](https://github.com/Erty-Gamedev/Obj2GoldSmd/releases) and place it in your folder of choice.
+No installation required, simply get the latest executable from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases) and place it in your folder of choice.
 
 ## How To Use (Hammer/J.A.C.K .rmf/.jmf)
 
@@ -32,7 +32,8 @@ Please notify Erty (erty.gamedev@gmail.com) along with the project file (either 
 * Skipping of faces covered in NULL texture, as well as several other tool textures.
 * Faces covered in {-prefixed textures will automatically be given the masked (transparent) rendermode.
 * The project file directory will be checked for existence of any referenced textures, and if missing will attempt to find and extract it from .wad packages in the wad list and game/mod directory specified in `config.ini` and project file directory, and if failed it will notify the user of missing textures.
-* Smooth shading that can be enabled with our without angle threshold using filename suffix parameter (`_smooth{x}`) or in `config.ini`.
+* Smooth shading that can be enabled with or without angle threshold using filename suffix parameter (`_smooth{x}`) or in `config.ini`.
+* CLI interface (run `Map2Prop.exe --help` to see a list of arguments).
 
 ## Why is the Sven Co-op studiomdl.exe required for compilation?
 
@@ -40,7 +41,7 @@ The reason for requiring the Sven Co-op studiomdl.exe for compiling these models
 
 ## Future
 
-One of the planned features is full commandline options support such as specifying an output folder, and disabling NULL face skipping and choice for setting masked rendermode on transparent textures or not.
+Currently planning on using an option to split up an input file into several models based on, for example, VISGroup or tied entity. Leaning towards the latter as the .jmf format's ability to nest VISGroup might make it complicated.
 
 ## Special Thanks
 
