@@ -8,19 +8,42 @@ GoldSrc Map2Prop is a tool for converting .rmf and .jmf files, as well as .obj f
 
 No installation required, simply get the latest executable from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases) and place it in your folder of choice.
 
-## How To Use (Hammer/J.A.C.K .rmf/.jmf)
+## How To Use
 
-* Create your object(s) in a new project or copy object(s) from an existing project to a new, empty project as save as .rmf/.jmf file.
-* To make use of smooth shading, either enable it in `config.ini`, or put the `_smooth{x}` suffix on the filename (this will override the config.ini settings for this file). `{x}` is an optional parameter for the angle threshold in degrees for when smooth shading will be applied (e.g. `_smooth60` will smooth all angles less than 60°).
-* Place any .wad packages used in creating your object(s) in the project file directory to make use of the automatic texture extraction. Alternatively you can specify a wad list in `config.ini`, and/or specify game/mod directories for the application to search in (it will prioritize wad list first, game/mod directory second, project file directory last).
-* Drag the .rmf/.jmf file onto the Map2Prop.exe executable. A .smd file and a .qc file will be created in the project file's directory. If autocompile is set to yes in `config.ini` (it is by default) and a valid [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) is found, then the application will automatically compile the .qc for you.
+For most basic use you just need to ensure all required textures are in the same folder as the project file (the .rmf/.jmf/.obj file), or make use of automatic .wad extraction (explained further down). Then simply drag your project file onto the executable.
 
-## How To Use (J.A.C.K .obj)
+You may also use the CLI interface. Run `Map2Prop.exe -h` to list all available options.
 
-* Create your object in J.A.C.K and go to *File* -> *Export to OBJ...* (note: this will export the *entire* map as an .obj file so make sure the object is by itself in its own file, e.g. by copy-pasting it into a new map).
-* To make use of smooth shading, either enable it in `config.ini`, or put the `_smooth{x}` suffix on the filename (this will override the config.ini settings for this file). `{x}` is an optional parameter for the angle threshold in degrees for when smooth shading will be applied (e.g. `_smooth60` will smooth all angles less than 60°).
-* Place any .wad packages used for making the .obj in its directory to make use of the automatic texture extraction. Alternatively you can specify a wad list in `config.ini`, and/or specify game/mod directories for the application to search in (it will prioritize wad list first, game/mod directory second, project file directory last).
-* Drag the exported .obj file onto the Map2Prop.exe executable. A .smd file and a .qc file will be created in the .obj file's directory. If autocompile is set to yes in `config.ini` (it is by default) and a valid [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) is found, then the application will automatically compile the .qc for you.
+The application will produce a .smd file as well as generate a .qc file already filled out for as a basic static prop.
+
+#### Note: Model origin
+
+The model will use the project file's origin as its own origin. Typically it's preferred to have the origin at the center bottom of the model to make it more convenient to place the model in-editor. This can also be adjusted with the `--offset` command line option.
+
+### Automatic .wad extraction
+
+Map2Prop is able to read and extract textures from .wad packages found in a wad list defined in `config.ini` or by command line, from a game/mod defined in `config.ini`, or within the project file's directory, prioritised in that order. The application will automatically do this for all texture files not found within the project file's directory.
+
+### Smoothing
+
+Smooth shading and the angle threshold for smoothing can be set in config.ini and/or command line, but may also be set by suffixing the file name with `_smooth{x}` where `{x}` is the optional parameter for angle threshold. Leaving out the threshold parameter or setting it to zero will smooth all edges of the model.
+
+Example:<br>`mymodel_smooth60.rmf` will have smooth shading applied to all edges less than 60° apart.
+
+### Skip faces
+
+Neither input format does any "inside face" culling. This is not the same as backface culling, but rather the faces inside of objects will typically remain in these formats.
+I recommend covering all unseen faces (as well as any other faces you want to skip) with *NULL* texture as these will be stripped out during the process.
+
+### Autocompile
+
+If the path to a [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) is set up either in `config.ini` or through command line option (`-m`, `--studiomdl`), you may use autocompile (enabled by default in `config.ini`) to compile the .smd file into a GoldSrc .mdl model at the end of the conversion process.
+
+### Exporting .obj file from J.A.C.K
+
+*(Only available in the paid version of J.A.C.K)*
+
+Either copy your object to a new, empty file or select the object in J.A.C.K and go to *File* -> *Export to OBJ...*
 
 ## Reporting Problems/Bugs
 
