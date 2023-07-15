@@ -13,7 +13,7 @@ from logutil import get_logger, shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.8.0-alpha'
+VERSION = '0.8.0-beta'
 
 
 class ConfigUtil:
