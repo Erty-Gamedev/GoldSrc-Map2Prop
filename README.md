@@ -4,6 +4,10 @@
 
 GoldSrc Map2Prop is a tool for converting .rmf and .jmf files, as well as .obj files exported from the Steam version of J.A.C.K, to goldsrc .smd file that can then be compiled into a goldsrc format studio model without the hastle of using an 3D editor.
 
+### Supported platforms
+Currently only supported on Windows.<br>
+Linux support is planned for a future release.
+
 ## Installation
 
 No installation required, simply get the latest executable from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases) and place it in your folder of choice.
@@ -12,7 +16,7 @@ No installation required, simply get the latest executable from [Releases](https
 
 For most basic use you just need to ensure all required textures are in the same folder as the project file (the .rmf/.jmf/.obj file), or make use of automatic .wad extraction (explained further down). Then simply drag your project file onto the executable.
 
-You may also use the CLI interface. Run `Map2Prop.exe -h` to list all available options.
+You may also use the CLI interface. Run `Map2Prop.exe --help` to list all available options.
 
 The application will produce a .smd file as well as generate a .qc file already filled out for as a basic static prop.
 
@@ -53,10 +57,16 @@ Please notify Erty (erty.gamedev@gmail.com) along with the project file (either 
 
 * Automatic triangulation of all >3-gons.
 * Skipping of faces covered in NULL texture, as well as several other tool textures.
-* Faces covered in {-prefixed textures will automatically be given the masked (transparent) rendermode.
+* Faces covered in \{-prefixed textures will automatically be given the masked (transparent) rendermode.
 * The project file directory will be checked for existence of any referenced textures, and if missing will attempt to find and extract it from .wad packages in the wad list and game/mod directory specified in `config.ini` and project file directory, and if failed it will notify the user of missing textures.
 * Smooth shading that can be enabled with or without angle threshold using filename suffix parameter (`_smooth{x}`) or in `config.ini`.
 * CLI interface (run `Map2Prop.exe --help` to see a list of arguments).
+
+### Limitations
+
+For the most part there are no geometric limitations other than the typical GoldSrc model format limits (e.g. max 2048 vertices per .smd file). Any textures that can be used in a map can also be used in models.
+
+Unlike maps, concave brushes are perfectly fine for Map2Prop. Just be aware that ambigious non-triangular faces may not be triangulated the way you want.
 
 ## Why is the Sven Co-op studiomdl.exe required for compilation?
 
