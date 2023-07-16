@@ -170,8 +170,8 @@ class ConfigUtil:
 
     @property
     def smoothing(self) -> bool:
-        return (self.args.smoothing
-                or self.config['AppConfig'].getboolean('smoothing', False))
+        return bool(self.args.smoothing
+                    or self.config['AppConfig'].getboolean('smoothing', False))
 
     @property
     def smoothing_treshhold(self) -> float:

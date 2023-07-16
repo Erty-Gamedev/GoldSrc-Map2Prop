@@ -8,13 +8,11 @@ Created on Thu May 18 10:38:39 2023
 
 import numpy as np
 from collections import namedtuple
-from is_convex_polygon import is_convex_polygon
 from polytri.polytri import triangulate
 
 
 Point = namedtuple('Point', ['x', 'y', 'z'])
 Uv = namedtuple('Uv', ['u', 'v', 'w'])
-ObjItem = namedtuple('ObjItem', ['i', 'v'])
 
 
 class PolyPoint:
@@ -151,16 +149,6 @@ def check_planar(polygon: list) -> bool:
     return True
 
 
-def check_convex(polygon: list) -> bool:
-    if len(polygon) < 3:
-        return False
-    if len(polygon) == 3:
-        return True
-
-    polygon2D = [(p.x, p.y) for p in flatten_plane(polygon)]
-    return is_convex_polygon(polygon2D)
-
-
 def triangulate_face(polygon: list) -> list:
     tris = []
     for tri in triangulate(polygon):
@@ -210,10 +198,3 @@ class PolyFace:
         self.polypoints = polypoints
         self.vertices = [p.v for p in self.polypoints]
         self.texture = texture
-
-        if not check_planar(self.vertices):
-            raise InvalidSolidException(
-                'Vertices are not planar', self.vertices)
-        if not check_convex(self.vertices):
-            raise InvalidSolidException(
-                'Face is not convex', self.vertices)
