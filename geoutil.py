@@ -6,17 +6,17 @@ Created on Thu May 18 10:38:39 2023
 """
 
 
-import numpy as np
-from collections import namedtuple
-from polytri.polytri import triangulate
+from vector3d import Vector3D
+from math import sqrt, cos, sin, acos
+from triangulate.triangulate import triangulate
 
 
-Point = namedtuple('Point', ['x', 'y', 'z'])
-Uv = namedtuple('Uv', ['u', 'v', 'w'])
+PI = 3.141592653589793116
+DEG2RAD = PI / 180
 
 
 class PolyPoint:
-    def __init__(self, v: Point, t: Point, n: Point):
+    def __init__(self, v: Vector3D, t: Vector3D, n: Vector3D):
         self.v, self.t, self.n = v, t, n
 
 
@@ -35,27 +35,30 @@ def get_triples(vertices: list, last_two_and_first: bool = True):
 
 
 def direction(angle: float) -> int:
-    return 0 if angle < np.pi else 1
+    return 0 if angle < PI else 1
 
 
-def segments_dot(a: Point, b: Point, c: Point):
-    vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
-    vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
-    return np.dot(vector_ab, vector_bc)
+def segments_dot(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    vector_ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
+    vector_bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
+    return vector_ab.dot(vector_bc)
 
 
-def segments_cross(a: Point, b: Point, c: Point):
-    ab = [b.x - a.x, b.y - a.y, b.z - a.z]
-    bc = [c.x - b.x, c.y - b.y, c.z - b.z]
-    return np.cross(ab, bc)
+def segments_cross(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
+    bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
+    return ab.cross(bc)
 
 
-def vectors_angle(a: Point, b: Point):
-    return np.arccos(np.clip(
-            np.dot(a, b) / np.linalg.norm(a) * np.linalg.norm(b), -1, 1))
+def clip(value, minimum, maximum):
+    return min(maximum, max(minimum, value))
 
 
-def segments_angle(a: Point, b: Point, c: Point):
+def vectors_angle(a: Vector3D, b: Vector3D):
+    return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
+
+
+def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D):
     vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
     vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
     return vectors_angle(vector_ab, vector_bc)
@@ -64,34 +67,38 @@ def segments_angle(a: Point, b: Point, c: Point):
 def plane_rotation(normal, d):
     a, b, c = normal
 
-    squaresum = np.sum(np.power(normal, 2))
-    rootsquaresum = np.sqrt(squaresum)
+    squaresum = sum(a ** 2, b ** 2, c ** 2)
+    rootsquaresum = sqrt(squaresum)
     costh = c / rootsquaresum
-    sinth = np.sqrt(
-        (np.power(a, 2) + np.power(b, 2)) / squaresum
+    sinth = sqrt(
+        (a ** 2 + b ** 2) / squaresum
     )
     k = 1 - costh
     u1 = b / rootsquaresum
     u2 = a / rootsquaresum
     u1u2k = u1 * u2 * k
 
-    return np.array([
-        [costh + np.power(u1, 2) * k, u1u2k, u2 * sinth],
-        [u1u2k, costh + np.power(u2, 2) * k, -u1 * sinth],
+    return [
+        [costh + u1 ** 2 * k, u1u2k, u2 * sinth],
+        [u1u2k, costh + u2 ** 2 * k, -u1 * sinth],
         [-u2 * sinth, u1 * sinth, costh]
-    ])
+    ]
+
+
+def deg2rad(degrees) -> float:
+    return degrees * DEG2RAD
 
 
 def rotate_2d(vector: tuple, degrees: float) -> tuple:
     x, y = vector
-    th = np.deg2rad(degrees)
-    return x * np.cos(th) - y * np.sin(th), x * np.sin(th) + y * np.cos(th)
+    th = deg2rad(degrees)
+    return x * cos(th) - y * sin(th), x * sin(th) + y * cos(th)
 
 
 def polygon_transpose(polygon, vector):
     new_poly = []
     for point in polygon:
-        new_poly.append(Point(
+        new_poly.append(Vector3D(
             point.x + vector[0],
             point.y + vector[1],
             point.z + vector[2]
@@ -101,25 +108,28 @@ def polygon_transpose(polygon, vector):
 
 def flatten_plane(polygon: list):
     normal, k = polygon_to_plane(polygon)
-    transposed = polygon_transpose(polygon, np.array(normal) * k)
+    transposed = polygon_transpose(polygon, normal * k)
 
     new_poly = []
     rotation = plane_rotation(normal, k)
     for point in transposed:
-        point = np.array(point).dot(rotation)
-        new_poly.append(Point(*point))
+        new_point = Vector3D(
+            point.dot(rotation[0]),
+            point.dot(rotation[1]),
+            point.dot(rotation[2]),
+        )
+        new_poly.append(new_point)
     return new_poly
 
 
-def is_point_on_plane(point: Point, normal, k) -> bool:
+def is_point_on_plane(point: Vector3D, normal, k) -> bool:
     a, b, c = normal
-    return np.absolute(
-        a*point.x + b*point.y + c*point.z + k) < 0.0078125
+    return abs(
+        a * point.x + b * point.y + c * point.z + k) < 0.0078125
 
 
 def plane_normal(plane_points: tuple):
-    cross = segments_cross(*plane_points)
-    return cross / np.linalg.norm(cross)
+    return segments_cross(*plane_points).normal
 
 
 def polygon_to_plane(polygon: list):
@@ -151,14 +161,20 @@ def check_planar(polygon: list) -> bool:
 
 def triangulate_face(polygon: list) -> list:
     tris = []
-    for tri in triangulate(polygon):
-        tris.append([Point(*p) for p in tri])
+    try:
+        for tri in triangulate(polygon):
+            tris.append([Vector3D(*p) for p in tri])
+    except Exception as e:
+        raise InvalidSolidException(e, polygon)
     return tris
 
 
-def average_normals(normals: list) -> Point:
-    avg = np.sum(normals, axis=0) / len(normals)
-    return Point(*(avg/np.linalg.norm(avg)))
+def sum_vectors(vectors: list) -> Vector3D:
+    return Vector3D(*[sum(v) for v in zip(*vectors)])
+
+
+def average_normals(normals: list) -> Vector3D:
+    return (sum_vectors(normals) / len(normals)).normal
 
 
 def average_near_normals(normals: list, threshold: float) -> dict:
