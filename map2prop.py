@@ -9,10 +9,9 @@ import re
 import os
 import sys
 import subprocess
-import numpy as np
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import Point, average_normals, average_near_normals
+from geoutil import Vector3D, average_normals, average_near_normals, deg2rad
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
 from formats.obj_reader import ObjReader
@@ -74,7 +73,7 @@ except MissingTextureException as e:
         input(enter_to_exit)
     config.app_exit(1, e)
 except InvalidFormatException as e:
-    logger.info(e)
+    logger.error(e)
     if running_as_exe:
         input(enter_to_exit)
     config.app_exit(1, e)
@@ -98,7 +97,7 @@ if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
 if smooth:
     if smoothing > 0.0:
         averaged_normals = {}
-        smooth_rad = np.deg2rad(smoothing)
+        smooth_rad = deg2rad(smoothing)
 
         for point in filereader.allpolypoints:
             if point.v not in averaged_normals:
@@ -109,7 +108,7 @@ if smooth:
     else:
         for point in filereader.allpolypoints:
             normals = filereader.vn_map[point.v]
-            if not isinstance(normals, Point):
+            if not isinstance(normals, Vector3D):
                 normals = average_normals(normals)
             point.n = normals
 
@@ -139,7 +138,7 @@ triangles
             else:
                 line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, p.v.y, p.v.z)
                 line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, p.n.y, p.n.z)
-                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y)
+                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
             output.write(line + "\n")
 
     output.write('end' + "\n")

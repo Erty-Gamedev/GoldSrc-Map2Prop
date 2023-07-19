@@ -6,7 +6,7 @@ Created on Tue May 30 10:38:33 2023
 """
 
 import struct
-from geoutil import np, Point, PolyPoint, plane_normal
+from geoutil import Vector3D, PolyPoint, plane_normal
 
 
 def read_byte(file) -> bytes:
@@ -151,7 +151,7 @@ class Plane:
 class Face:
     def __init__(self, vertices: list, plane_points: list, texture: dict):
         self.vertices = vertices
-        self.plane_points = [Point(*p) for p in plane_points]
+        self.plane_points = [Vector3D(*p) for p in plane_points]
         self.texture = texture
         self.plane_normal = plane_normal(self.plane_points)
 
@@ -160,28 +160,28 @@ class Face:
         for vertex in self.vertices:
             u, v = self.__project_uv(vertex)
             self.polypoints.append(PolyPoint(
-                Point(*vertex),
-                Point(
+                Vector3D(*vertex),
+                Vector3D(
                     u / self.texture['width'],
                     v / self.texture['height'],
                     0),
-                Point(*self.plane_normal)
+                Vector3D(*self.plane_normal)
             ))
 
     def __project_uv(self, vertex: tuple):
-        vertex = np.array(vertex)
+        vertex = Vector3D(*vertex)
 
         # Get texture plane normal, not face plane normal
-        plane_normal = np.cross(
-            self.texture['rightaxis'], self.texture['downaxis'])
+        plane_normal = Vector3D(*self.texture['rightaxis']).cross(
+            Vector3D(*self.texture['downaxis']))
 
-        projected = vertex - (np.dot(vertex, plane_normal) * plane_normal)
+        projected = vertex - (vertex.dot(plane_normal) * plane_normal)
 
         u = self.texture['shiftx'] * self.texture['scalex']
         v = -self.texture['shifty'] * self.texture['scaley']
 
-        u += np.dot(projected, self.texture['rightaxis'])
-        v -= np.dot(projected, self.texture['downaxis'])
+        u += projected.dot(self.texture['rightaxis'])
+        v -= projected.dot(self.texture['downaxis'])
 
         # Apply scale:
         u, v = u / self.texture['scalex'], v / self.texture['scaley']

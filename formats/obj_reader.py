@@ -7,26 +7,9 @@ Created on Tue May 30 10:40:33 2023
 
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import (Point, PolyPoint, PolyFace,
+from geoutil import (Vector3D, PolyPoint, PolyFace,
                      InvalidSolidException, triangulate_face)
 from formats.wad_handler import WadHandler
-
-
-WAD_SKIP_LIST = [
-    'cached',
-    'decals',
-    'fonts',
-    'gfx',
-    'spraypaint',
-    'tempdecal',
-]
-SKIP_TEXTURES = [
-    'aaatrigger', 'bevel', 'black_hidden',
-    'clip', 'clipbevel', 'clipbevelbrush',
-    'cliphull1', 'cliphull2', 'cliphull3',
-    'contentempty', 'hint', 'noclip', 'null',
-    'skip', 'sky', 'solidhint'
-]
 
 
 mtllib_prefix = 'mtllib '
@@ -47,7 +30,7 @@ poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
 
 def parseCoord(coord: str) -> list:
     coord = coord.split(' ')
-    return Point(*[float(n) for n in coord])
+    return Vector3D(*[float(n) for n in coord])
 
 
 class ObjReader:
@@ -135,7 +118,7 @@ class ObjReader:
 
                 # Parse faces:
                 elif line.startswith(poly_face_prefix):
-                    if tex.lower() in SKIP_TEXTURES:
+                    if tex.lower() in self.wadhandler.SKIP_TEXTURES:
                         continue
 
                     points = line[len(poly_face_prefix):].split(' ')

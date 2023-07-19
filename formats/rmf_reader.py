@@ -126,11 +126,7 @@ class RmfReader:
         return Brush(faces, colour), visgroup_id
 
     def __addpolyface(self, face: Face):
-        try:
-            tris = triangulate_face(face.vertices)
-        except Exception:
-            self.__logger.exception('Face triangulation failed')
-            raise
+        tris = triangulate_face(face.vertices)
 
         for tri in tris:
             tri_face = []
@@ -140,13 +136,7 @@ class RmfReader:
                         tri_face.append(polyp)
                         break
 
-            try:
-                polyface = PolyFace(tri_face, face.texture['name'])
-            except InvalidSolidException as ise:
-                self.__logger.error(
-                    "Object had one or more invalid faces: " +
-                    f"{ise.message}")
-                raise
+            polyface = PolyFace(tri_face, face.texture['name'])
 
             self.allfaces.append(polyface)
 
