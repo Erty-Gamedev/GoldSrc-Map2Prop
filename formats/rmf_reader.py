@@ -7,8 +7,8 @@ Created on Fri Jun  9 09:14:51 2023
 
 from PIL import Image
 from pathlib import Path
-from geoutil import (PolyFace, InvalidSolidException, triangulate_face)
-from formats import (read_byte, read_int, read_float, read_ntstring,
+from geoutil import PolyFace, triangulate_face
+from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException,
                      Face, VisGroup, MapObject, Brush, Entity, Group,
@@ -86,7 +86,7 @@ class RmfReader:
         colour = read_colour(file)
         file.read(1)  # Padding byte
         visgroup_id = read_int(file)
-        visible = bool(read_byte(file))
+        visible = read_bool(file)
         file.read(3)  # Padding bytes
         return VisGroup(visgroup_id, name, colour, visible)
 

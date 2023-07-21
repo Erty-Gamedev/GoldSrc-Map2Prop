@@ -7,8 +7,8 @@ Created on Fri Jul  7 20:01:25 2023
 
 from PIL import Image
 from pathlib import Path
-from geoutil import (PolyFace, InvalidSolidException, triangulate_face)
-from formats import (read_byte, read_int, read_short, read_float,
+from geoutil import PolyFace, triangulate_face
+from formats import (read_bool, read_int, read_short, read_float,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
@@ -111,7 +111,7 @@ class JmfReader:
         name = read_lpstring2(file)
         visgroup_id = read_int(file)
         colour = read_colour_rgba(file)
-        visible = bool(read_byte(file))
+        visible = read_bool(file)
         return VisGroup(visgroup_id, name, colour, visible)
 
     def __readcamera(self, file):
