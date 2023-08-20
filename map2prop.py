@@ -68,15 +68,20 @@ try:
             input(enter_to_exit)
         config.app_exit(2, 'File type must be .obj, .rmf, or .jmf!')
 except MissingTextureException as e:
-    logger.info(e)
+    logger.info(str(e))
     if running_as_exe:
         input(enter_to_exit)
-    config.app_exit(1, e)
+    config.app_exit(1, str(e))
 except InvalidFormatException as e:
-    logger.error(e)
+    logger.error(str(e))
     if running_as_exe:
         input(enter_to_exit)
-    config.app_exit(1, e)
+    config.app_exit(1, str(e))
+except ValueError as e:
+    logger.error(str(e))
+    if running_as_exe:
+        input(enter_to_exit)
+    config.app_exit(1, str(e))
 
 
 smooth = False
