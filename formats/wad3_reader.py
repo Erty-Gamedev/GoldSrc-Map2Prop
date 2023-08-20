@@ -30,8 +30,8 @@ class DirEntry:
 
 class TextureEntry:
     def __init__(self, data: bytes):
-        self.name = struct.unpack('<16s', data[0:16])[0].decode(
-            'ascii').split('\x00', 1)[0]
+        self.name = struct.unpack('<16s', data[0:16])[0].split(
+            b'\x00', 1)[0].decode('ascii')
         self.width = struct.unpack('<L', data[16:20])[0]
         self.height = struct.unpack('<L', data[20:24])[0]
         self.mipoffset0 = struct.unpack('<L', data[24:28])[0]

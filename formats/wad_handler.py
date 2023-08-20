@@ -100,7 +100,7 @@ Extracting {texture} from {reader.file}.""")
                 copy2(self.__filedir / texfile, self.__outputdir / texfile)
             else:
                 self.__logger.info(f"""\
-Texture {texture}.bmp not found in .obj file's directory. \
+Texture {texture}.bmp not found in input file's directory. \
 Searching directory for .wad packages...""")
 
                 if (check := self.__check_wads(texture)) is False:

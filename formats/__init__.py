@@ -13,6 +13,10 @@ def read_byte(file) -> bytes:
     return struct.unpack('<b', file.read(1))[0]
 
 
+def read_bool(file) -> bytes:
+    return struct.unpack('<?', file.read(1))[0]
+
+
 def read_short(file) -> bytes:
     return struct.unpack('<h', file.read(2))[0]
 
