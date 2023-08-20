@@ -7,7 +7,7 @@ Created on Fri Jul 21 15:31:22 2023
 
 from PIL import Image
 from pathlib import Path
-from geoutil import PolyFace, triangulate_face, Vector3D
+from geoutil import PolyFace, triangulate_face, Vector3D, plane_intersection
 from formats import Face
 # from formats.wad_handler import WadHandler
 
@@ -24,7 +24,7 @@ class Brush:
         self.faces = faces
 
 
-class ProtoFace:
+class Plane:
     def __init__(self, plane_points: list, texture: dict):
         self.plane_points = plane_points
         self.texture = texture
@@ -118,7 +118,7 @@ class MapReader:
                 vertices, protoface.plane_points, protoface.texture))
         return Brush(faces)
 
-    def __readface(self, line: str) -> ProtoFace:
+    def __readplane(self, line: str) -> Plane:
         parts = line.split()
         if len(parts) != 31:
             raise Exception(f"Unexpected face data: {line}")
@@ -144,15 +144,43 @@ class MapReader:
             'height': 16,
         }
 
-        return ProtoFace(plane_points, texture)
+        return Plane(plane_points, texture)
 
-    def __intersections(self, plane: list, neighbours: list):
+    def __faces_from_planes(self, planes: list) -> dict:
         vertices = []
+        faces = {}
+        edges = []
+        edge_face_map = {}
 
-        for n in neighbours:
-            if n == plane:
-                continue
+        for plane in planes:
+            for plane2 in planes:
+                if plane == plane2:
+                    continue
+                if (edge := plane_intersection(plane, plane2)) is not None:
+                    edges.append(edge)
+                    if edge not in edge_face_map:
+                        edge_face_map[edge] = []
+                    if plane not in edge_face_map[edge]:
+                        edge_face_map[edge].append(plane)
+                    if plane2 not in edge_face_map[edge]:
+                        edge_face_map[edge].append(plane2)
 
-            vertices.append((0, 0, 0))
-        
-        return vertices
+        for edge in edges:
+            for edge2 in edges:
+                if edge == edge2:
+                    continue
+                if (vertex := line_intersection(edge, edge2)) is not None:
+                    vertices.append(vertex)
+
+        return faces
+
+    # def __intersections(self, plane: list, neighbours: list):
+    #     vertices = []
+
+    #     for n in neighbours:
+    #         if n == plane:
+    #             continue
+
+    #         vertices.append((0, 0, 0))
+
+    #     return vertices

@@ -209,6 +209,28 @@ def average_near_normals(normals: list, threshold: float) -> dict:
     return new_normals
 
 
+def line_intersection(a: list, b: list):
+    pass
+
+
+def plane_intersection(a: list, b: list):
+    pass
+
+
+def find_geometric_center(vertices: list) -> Vector3D:
+    p_min, p_max = Vector3D(*vertices[0]), Vector3D(*vertices[0])
+
+    for vertex in vertices[1:]:
+        for i in range(3):
+            if vertex[i] < p_min[i]:
+                p_min[i] = vertex[i]
+            if vertex[i] > p_max[i]:
+                p_max[i] = vertex[i]
+
+    return Vector3D(
+        *(p_min[i] + (p_max[i] - p_min[i]) / 2 for i in range(3)))
+
+
 class PolyFace:
     def __init__(self, polypoints: list, texture: str):
         self.polypoints = polypoints
