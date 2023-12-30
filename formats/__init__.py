@@ -5,37 +5,39 @@ Created on Tue May 30 10:38:33 2023
 @author: Erty
 """
 
-import struct
+from struct import unpack
 from geoutil import Vector3D, PolyPoint, plane_normal
 
 
 def read_byte(file) -> bytes:
-    return struct.unpack('<b', file.read(1))[0]
+    return unpack('<b', file.read(1))[0]
 
 
 def read_bool(file) -> bytes:
-    return struct.unpack('<?', file.read(1))[0]
+    return unpack('<?', file.read(1))[0]
 
 
 def read_short(file) -> bytes:
-    return struct.unpack('<h', file.read(2))[0]
+    return unpack('<h', file.read(2))[0]
 
 
 def read_int(file) -> int:
-    return struct.unpack('<i', file.read(4))[0]
+    return unpack('<i', file.read(4))[0]
 
 
 def read_float(file) -> float:
-    return struct.unpack('<f', file.read(4))[0]
+    return unpack('<f', file.read(4))[0]
+
+
 
 
 def read_string(file, length: int) -> str:
-    return struct.unpack(f"<{length}s", file.read(length))[0]
+    return unpack(f"<{length}s", file.read(length))[0]
 
 
 def read_ntstring(file, length: int) -> str:
     """Reads a null-terminated string of a set length."""
-    strbytes = struct.unpack(f"<{length}s", file.read(length))[0]
+    strbytes = unpack(f"<{length}s", file.read(length))[0]
     string = ''
     for b in strbytes:
         if b == 0:
@@ -57,7 +59,7 @@ def read_lpstring2(file) -> str:
     buffer = file.read(4)
     if len(buffer) < 4:
         raise EndOfFileException()
-    strlen = struct.unpack('<i', buffer)[0]
+    strlen = unpack('<i', buffer)[0]
     if strlen == -1:
         return ''
     return read_ntstring(file, strlen)
@@ -65,18 +67,18 @@ def read_lpstring2(file) -> str:
 
 def read_colour(file) -> tuple:
     return (
-        struct.unpack('<B', file.read(1))[0],
-        struct.unpack('<B', file.read(1))[0],
-        struct.unpack('<B', file.read(1))[0]
+        unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0]
     )
 
 
 def read_colour_rgba(file) -> tuple:
     return (
-        struct.unpack('<B', file.read(1))[0],
-        struct.unpack('<B', file.read(1))[0],
-        struct.unpack('<B', file.read(1))[0],
-        struct.unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0],
+        unpack('<B', file.read(1))[0],
     )
 
 
