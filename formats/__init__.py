@@ -29,6 +29,8 @@ def read_float(file) -> float:
     return unpack('<f', file.read(4))[0]
 
 
+def read_double(file) -> float:
+    return unpack('<d', file.read(8))[0]
 
 
 def read_string(file, length: int) -> str:
