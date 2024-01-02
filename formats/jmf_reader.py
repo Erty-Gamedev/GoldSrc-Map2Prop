@@ -252,18 +252,19 @@ class JmfReader:
         read_int(file)  # height
 
         # surface properties
-        read_vector3D(file)  # rightaxis
-        read_float(file)  # shiftx
-        read_vector3D(file)  # texture['downaxis']
-        read_float(file)  # texture['shifty']
-        read_float(file)  # texture['scalex']
-        read_float(file)  # texture['scaley']
-        read_float(file)  # texture['angle']
+        read_vector3D(file)      # rightaxis
+        read_float(file)         # shiftx
+        read_vector3D(file)      # texture['downaxis']
+        read_float(file)         # texture['shifty']
+        read_float(file)         # texture['scalex']
+        read_float(file)         # texture['scaley']
+        read_float(file)         # texture['angle']
         file.read(16)
-        read_int(file)
+        read_int(file)           # contents flags
         read_ntstring(file, 64)  # texture name
 
-        file.read(4)
+        file.read(4)  # unknown
+
         for i in range(1024):
             self.__readcurvepoint(file)
 
