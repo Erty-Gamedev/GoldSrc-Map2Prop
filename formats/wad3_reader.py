@@ -8,7 +8,7 @@ Created on Fri May 26 17:18:27 2023
 
 from pathlib import Path
 from PIL import Image
-from formats import InvalidFormatException, struct
+from formats import InvalidFormatException, unpack
 
 
 PALETTE_SIZE = 768  # 256 * 3
@@ -16,13 +16,13 @@ PALETTE_SIZE = 768  # 256 * 3
 
 class DirEntry:
     def __init__(self, data: bytes):
-        self.filepos = struct.unpack('<l', data[0:4])[0]
-        self.disksize = struct.unpack('<l', data[4:8])[0]
-        self.size = struct.unpack('<l', data[8:12])[0]
-        self.type = struct.unpack('<b', data[12:13])[0]
-        self.compression = struct.unpack('<?', data[13:14])[0]
-        self.padding = struct.unpack('<h', data[14:16])[0]
-        self.name = struct.unpack('<16s', data[16:32])[0]
+        self.filepos = unpack('<l', data[0:4])[0]
+        self.disksize = unpack('<l', data[4:8])[0]
+        self.size = unpack('<l', data[8:12])[0]
+        self.type = unpack('<b', data[12:13])[0]
+        self.compression = unpack('<?', data[13:14])[0]
+        self.padding = unpack('<h', data[14:16])[0]
+        self.name = unpack('<16s', data[16:32])[0]
 
     def __str__(self):
         return self.name
@@ -30,14 +30,14 @@ class DirEntry:
 
 class TextureEntry:
     def __init__(self, data: bytes):
-        self.name = struct.unpack('<16s', data[0:16])[0].decode(
-            'ascii').split('\x00', 1)[0]
-        self.width = struct.unpack('<L', data[16:20])[0]
-        self.height = struct.unpack('<L', data[20:24])[0]
-        self.mipoffset0 = struct.unpack('<L', data[24:28])[0]
-        self.mipoffset1 = struct.unpack('<L', data[28:32])[0]
-        self.mipoffset2 = struct.unpack('<L', data[32:36])[0]
-        self.mipoffset3 = struct.unpack('<L', data[36:40])[0]
+        self.name = unpack('<16s', data[0:16])[0].split(
+            b'\x00', 1)[0].decode('ascii')
+        self.width = unpack('<L', data[16:20])[0]
+        self.height = unpack('<L', data[20:24])[0]
+        self.mipoffset0 = unpack('<L', data[24:28])[0]
+        self.mipoffset1 = unpack('<L', data[28:32])[0]
+        self.mipoffset2 = unpack('<L', data[32:36])[0]
+        self.mipoffset3 = unpack('<L', data[36:40])[0]
         self.basetexturedata = data[40:self.mipoffset1]
         self.image = Image.frombytes(
             'P', (self.width, self.height), self.basetexturedata, 'raw')
@@ -66,8 +66,8 @@ class Wad3Reader:
                 raise InvalidFormatException(
                     f"{file} is not a valid WAD3 file.")
 
-            num_dir_entries = struct.unpack('<l', header[4:8])[0]
-            dir_offset = struct.unpack('<l', header[8:])[0]
+            num_dir_entries = unpack('<l', header[4:8])[0]
+            dir_offset = unpack('<l', header[8:])[0]
 
             self.header = {
                 'magic': magic,
