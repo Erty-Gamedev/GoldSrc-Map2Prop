@@ -8,7 +8,7 @@ Created on Fri Jul  7 20:01:25 2023
 from PIL import Image
 from pathlib import Path
 from geoutil import PolyFace, triangulate_face
-from formats import (read_bool, read_int, read_short, read_float,
+from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
@@ -51,11 +51,17 @@ class JmfReader:
                 raise InvalidFormatException(
                     f"{self.filepath} is not a valid JMF file.")
 
-            mapfile.read(4)  # Padding? Read 121 as int during an early test
+            # JMF format version.
+            # Was 121 before december 2023 update, became 122 after.
+            jmf_version = read_int(mapfile)
 
             export_path_count = read_int(mapfile)
             for i in range(export_path_count):
                 read_lpstring2(mapfile)
+
+            if jmf_version >= 122:
+                for i in range(3):
+                    self.readbgimage(mapfile)
 
             group_count = read_int(mapfile)
             for i in range(group_count):
@@ -90,6 +96,16 @@ class JmfReader:
                         self.entities.append(entity)
             except EndOfFileException:
                 pass
+
+    def readbgimage(self, file):
+        read_lpstring2(file)  # Image path
+        read_double(file)  # Scale
+        read_int(file)  # Luminance
+        read_int(file)  # Filtering (0=near/1=lin)
+        read_int(file)  # Invert colours
+        read_int(file)  # X offset
+        read_int(file)  # Y offset
+        read_int(file)  # Padding?
 
     def __readgroup(self, file) -> tuple:
         group_id = read_int(file)
