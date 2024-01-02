@@ -212,7 +212,7 @@ class JmfReader:
         return entity
 
     def __readbrush(self, file) -> Brush:
-        read_int(file)  # curves count
+        curves_count = read_int(file)
         read_int(file)  # Jack editor state
         group_id = read_int(file)
         read_int(file)  # root group id
@@ -238,10 +238,40 @@ class JmfReader:
                         self.vn_map[polypoint.v] = []
                     self.vn_map[polypoint.v].append(polypoint.n)
             faces.append(face)
+
+        for i in range(curves_count):
+            self.__readcurve(file)
+
         brush = Brush(faces, colour)
         brush.group = self.__getgroup(group_id)
 
         return Brush(faces, colour)
+
+    def __readcurve(self, file) -> None:
+        read_int(file)  # width
+        read_int(file)  # height
+
+        # surface properties
+        read_vector3D(file)      # rightaxis
+        read_float(file)         # shiftx
+        read_vector3D(file)      # texture['downaxis']
+        read_float(file)         # texture['shifty']
+        read_float(file)         # texture['scalex']
+        read_float(file)         # texture['scaley']
+        read_float(file)         # texture['angle']
+        file.read(16)
+        read_int(file)           # contents flags
+        read_ntstring(file, 64)  # texture name
+
+        file.read(4)  # unknown
+
+        for i in range(1024):
+            self.__readcurvepoint(file)
+
+    def __readcurvepoint(self, file) -> None:
+        read_vector3D(file)  # position
+        read_vector3D(file)  # normal
+        read_vector3D(file)  # texture_uv
 
     def __readface(self, file) -> Face:
         texture = {}
