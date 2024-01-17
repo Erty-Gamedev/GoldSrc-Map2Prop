@@ -53,6 +53,8 @@ def read_lpstring(file) -> str:
     strlen = read_byte(file)
     if strlen == 0:
         return ''
+    if strlen < 0:
+        strlen = 256 + strlen
     return read_ntstring(file, strlen)
 
 
