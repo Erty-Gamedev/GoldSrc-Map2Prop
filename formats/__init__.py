@@ -199,6 +199,25 @@ class Face:
         return u, v
 
 
+class JFace:
+    def __init__(self, vertices: list, texture: dict, normal: tuple = None):
+        self.vertices = vertices
+        self.texture = texture
+        self.plane_normal = normal
+
+        self.polypoints = []
+
+        for i, vertex in enumerate(self.vertices):
+            u, v = vertex[3:]
+            vertex = vertex[:3]
+            self.polypoints.append(PolyPoint(
+                Vector3D(*vertex),
+                Vector3D(u, -v, 0),
+                Vector3D(*self.plane_normal)
+            ))
+            self.vertices[i] = vertex
+
+
 class EntityPath:
     def __init__(self, name: str, classname: str, pathtype: int, nodes: list):
         self.name = name

@@ -13,7 +13,7 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
                      MissingTextureException,
-                     Face, VisGroup, Brush, Entity, JGroup)
+                     JFace, VisGroup, Brush, Entity, JGroup)
 from formats.wad_handler import WadHandler
 
 
@@ -273,7 +273,7 @@ class JmfReader:
         read_vector3D(file)  # normal
         read_vector3D(file)  # texture_uv
 
-    def readface(self, file) -> Face:
+    def readface(self, file) -> JFace:
         texture = {}
 
         read_int(file)  # render flags
@@ -293,10 +293,8 @@ class JmfReader:
 
         texture['name'] = read_ntstring(file, 64)
 
-        # more padding?
-        read_float(file)
-        read_float(file)
-        read_float(file)
+        normal = read_vector3D(file)
+
         read_float(file)
         read_int(file)
 
@@ -321,18 +319,15 @@ class JmfReader:
 
         vertices = []
         for i in range(vertex_count):
-            vertices.append(read_vector3D(file))
+            vertex = read_vector3D(file)
+            vertex += (read_float(file), read_float(file))
+            vertices.append(vertex)
 
-            # MESS speculates this is normal vector?
-            read_float(file)
-            read_float(file)
-            read_float(file)
+            read_float(file)  # Selection state
 
-        plane_points = vertices[:3]
+        return JFace(vertices, texture, normal)
 
-        return Face(vertices, plane_points, texture)
-
-    def addpolyface(self, face: Face):
+    def addpolyface(self, face: JFace):
         tris = triangulate_face(face.vertices)
 
         for tri in tris:
