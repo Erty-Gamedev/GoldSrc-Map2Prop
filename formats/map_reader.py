@@ -45,20 +45,20 @@ class MapReader:
         self.vn_map = {}
         self.maskedtextures = []
 
-        self.__checked = []
-        self.__textures = {}
+        self.checked = []
+        self.textures = {}
         self.missing_textures = False
 
-        self.__filedir = self.filepath.parents[0]
-        # self.wadhandler = WadHandler(self.__filedir, outputdir)
+        self.filedir = self.filepath.parents[0]
+        # self.wadhandler = WadHandler(self.filedir, outputdir)
 
-        self.__parse()
+        self.parse()
 
-    def __parse(self):
+    def parse(self):
         with self.filepath.open('r') as file:
             while line := file.readline().strip():
                 if line.startswith('{'):
-                    entity = self.__readentity(file)
+                    entity = self.readentity(file)
 
                     if entity.classname == 'worldspawn':
                         self.properties = entity.properties
@@ -66,14 +66,14 @@ class MapReader:
                     else:
                         self.entities.append(entity)
 
-    def __readentity(self, file) -> Entity:
+    def readentity(self, file) -> Entity:
         classname = ''
         properties = {}
         brushes = []
         while line := file.readline().strip():
-            if line.startswith('//'):
+            if line.startswith('//'):  # skip comments
                 continue
-            elif line.startswith('"'):
+            elif line.startswith('"'):  # read keyvalues
                 keyvalue = line.split('"')
                 if len(keyvalue) > 5:
                     raise Exception(f"Invalid keyvalue: {keyvalue}.")
@@ -82,11 +82,11 @@ class MapReader:
                 if key == 'classname':
                     classname = value
                 if key == 'wad' and classname == 'worldspawn':
-                    self.__handlewadlist(value)
+                    self.handlewadlist(value)
 
                 properties[key] = value
             elif line.startswith('{'):
-                brush = self.__readbrush(file)
+                brush = self.readbrush(file)
                 brushes.append(brush)
             elif line.startswith('}'):
                 break
@@ -94,10 +94,10 @@ class MapReader:
                 raise Exception(f"Unexpected entity data: {line}")
         return Entity(classname, properties, brushes)
 
-    def __handlewadlist(self, wadlist: str):
+    def handlewadlist(self, wadlist: str):
         pass
 
-    def __readbrush(self, file) -> Brush:
+    def readbrush(self, file) -> Brush:
         faces = []
         protofaces = []
         planes = []
@@ -105,7 +105,7 @@ class MapReader:
             if line.startswith('//'):
                 continue
             elif line.startswith('('):
-                protoface = self.__readface(line)
+                protoface = self.readface(line)
                 protofaces.append(protoface)
                 planes.extend(protoface.plane_points)
             elif line.startswith('}'):
@@ -113,12 +113,12 @@ class MapReader:
             else:
                 raise Exception(f"Unexpected face data: {line}")
         for protoface in protofaces:
-            vertices = self.__intersections(protoface.plane_points, planes)
+            vertices = self.intersections(protoface.plane_points, planes)
             faces.append(Face(
                 vertices, protoface.plane_points, protoface.texture))
         return Brush(faces)
 
-    def __readplane(self, line: str) -> Plane:
+    def readplane(self, line: str) -> Plane:
         parts = line.split()
         if len(parts) != 31:
             raise Exception(f"Unexpected face data: {line}")
@@ -146,7 +146,7 @@ class MapReader:
 
         return Plane(plane_points, texture)
 
-    def __faces_from_planes(self, planes: list) -> dict:
+    def faces_from_planes(self, planes: list) -> dict:
         vertices = []
         faces = {}
         edges = []
@@ -169,12 +169,12 @@ class MapReader:
             for edge2 in edges:
                 if edge == edge2:
                     continue
-                if (vertex := line_intersection(edge, edge2)) is not None:
-                    vertices.append(vertex)
+                # if (vertex := line_intersection(edge, edge2)) is not None:
+                #     vertices.append(vertex)
 
         return faces
 
-    # def __intersections(self, plane: list, neighbours: list):
+    # def intersections(self, plane: list, neighbours: list):
     #     vertices = []
 
     #     for n in neighbours:
