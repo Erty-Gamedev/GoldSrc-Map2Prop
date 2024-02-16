@@ -7,6 +7,8 @@ Created on Wed Jul 19 16:53:01 2023
 
 from math import sqrt
 
+EPSILON = 1/(2**10)
+
 
 class Vector3D(list):
     def __init__(self, x, y, z):
@@ -29,7 +31,7 @@ class Vector3D(list):
         return sqrt((self.x ** 2) + (self.y ** 2) + (self.z ** 2))
 
     @property
-    def normal(self):
+    def normalized(self):
         return Vector3D(
             self.x / self.mag, self.y / self.mag, self.z / self.mag)
 
@@ -41,6 +43,13 @@ class Vector3D(list):
             self.y * b[2] - self.z * b[1],
             self.z * b[0] - self.x * b[2],
             self.x * b[1] - self.y * b[0]
+        )
+
+    def eq(self, b):
+        return (
+            abs(self.x - b[0]) < EPSILON and
+            abs(self.y - b[1]) < EPSILON and
+            abs(self.z - b[2]) < EPSILON
         )
 
     def __neg__(self):
@@ -90,3 +99,11 @@ class Vector3D(list):
 
     def __hash__(self):
         return hash(tuple(self))
+
+    def __format__(self, format_spec):
+        if format_spec.startswith('p'):
+            if ':' in format_spec:
+                fspec = format_spec[1:]
+                pre = f"({{{fspec}}}, {{{fspec}}}, {{{fspec}}})"
+                return pre.format(self.x, self.y, self.z)
+        return f"({self.x:f}, {self.y:f}, {self.z:f})"
