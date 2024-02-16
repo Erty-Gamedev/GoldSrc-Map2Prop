@@ -37,7 +37,7 @@ goldsrc .smd files for model creation.',
     def app_exit(self, status: int = 0, message: str = ''):
         self.parser.exit(status, message)
 
-    def parseargs(self, running_as_exe: bool):
+    def parseargs(self):
         self.parser.add_argument('input', nargs='?', type=str,
                                  help='.map/.rmf/.jmf/.obj file to convert')
         self.parser.add_argument(
