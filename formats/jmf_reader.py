@@ -13,7 +13,7 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
                      MissingTextureException,
-                     Face, VisGroup, Brush, Entity, JGroup)
+                     JFace, VisGroup, Brush, Entity, JGroup)
 from formats.wad_handler import WadHandler
 
 
@@ -35,16 +35,16 @@ class JmfReader:
         self.vn_map = {}
         self.maskedtextures = []
 
-        self.__checked = []
-        self.__textures = {}
+        self.checked = []
+        self.textures = {}
         self.missing_textures = False
 
-        self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir, outputdir)
+        self.filedir = self.filepath.parents[0]
+        self.wadhandler = WadHandler(self.filedir, outputdir)
 
-        self.__parse()
+        self.parse()
 
-    def __parse(self):
+    def parse(self):
         with self.filepath.open('rb') as mapfile:
             magic = mapfile.read(4)
             if magic != bytes('JHMF', 'ascii'):
@@ -65,29 +65,29 @@ class JmfReader:
 
             group_count = read_int(mapfile)
             for i in range(group_count):
-                group, group_parent_id = self.__readgroup(mapfile)
+                group, group_parent_id = self.readgroup(mapfile)
                 if group_parent_id != 0:
                     self.group_parents[group.id] = group_parent_id
                 self.groups.append(group)
 
             visgroups_count = read_int(mapfile)
             for i in range(visgroups_count):
-                self.__readvisgroup(mapfile)
+                self.readvisgroup(mapfile)
 
             read_vector3D(mapfile)  # Cordon minimum
             read_vector3D(mapfile)  # Cordon maximum
 
             camera_count = read_int(mapfile)
             for i in range(camera_count):
-                self.__readcamera(mapfile)
+                self.readcamera(mapfile)
 
             path_count = read_int(mapfile)
             for i in range(path_count):
-                self.__readpath(mapfile)
+                self.readpath(mapfile)
 
             try:
                 while True:
-                    entity = self.__readentity(mapfile)
+                    entity = self.readentity(mapfile)
                     if entity.classname == 'worldspawn':
                         self.brushes.extend(entity.brushes)
 
@@ -107,7 +107,7 @@ class JmfReader:
         read_int(file)  # Y offset
         read_int(file)  # Padding?
 
-    def __readgroup(self, file) -> tuple:
+    def readgroup(self, file) -> tuple:
         group_id = read_int(file)
         group_parent_id = read_int(file)
         read_int(file)  # flags
@@ -117,26 +117,26 @@ class JmfReader:
 
         return group, group_parent_id
 
-    def __getgroup(self, id: int) -> JGroup:
+    def getgroup(self, id: int) -> JGroup:
         for group in self.groups:
             if group.id == id:
                 return group
         return None
 
-    def __readvisgroup(self, file) -> VisGroup:
+    def readvisgroup(self, file) -> VisGroup:
         name = read_lpstring2(file)
         visgroup_id = read_int(file)
         colour = read_colour_rgba(file)
         visible = read_bool(file)
         return VisGroup(visgroup_id, name, colour, visible)
 
-    def __readcamera(self, file):
+    def readcamera(self, file):
         read_vector3D(file)  # eye position
         read_vector3D(file)  # look target
         read_int(file)  # flags (bit 0x02 for is selected)
         read_colour_rgba(file)
 
-    def __readpath(self, file):
+    def readpath(self, file):
         read_lpstring2(file)  # classname
         read_lpstring2(file)  # name
         read_int(file)  # path type
@@ -145,9 +145,9 @@ class JmfReader:
 
         node_count = read_int(file)
         for i in range(node_count):
-            self.__readpathnode(file)
+            self.readpathnode(file)
 
-    def __readpathnode(self, file):
+    def readpathnode(self, file):
         read_lpstring2(file)  # name override
         read_lpstring2(file)  # fire on target
         read_vector3D(file)  # position
@@ -161,7 +161,7 @@ class JmfReader:
             read_lpstring2(file)  # key
             read_lpstring2(file)  # value
 
-    def __readentity(self, file) -> Entity:
+    def readentity(self, file) -> Entity:
         classname = read_lpstring2(file)
         origin = read_vector3D(file)
         read_int(file)  # Jack editor state
@@ -203,16 +203,16 @@ class JmfReader:
         brushes = []
         brush_count = read_int(file)
         for i in range(brush_count):
-            brushes.append(self.__readbrush(file))
+            brushes.append(self.readbrush(file))
 
         entity = Entity(brushes, colour, classname, spawnflags,
                         properties, origin)
-        entity.group = self.__getgroup(group_id)
+        entity.group = self.getgroup(group_id)
 
         return entity
 
-    def __readbrush(self, file) -> Brush:
-        read_int(file)  # curves count
+    def readbrush(self, file) -> Brush:
+        curves_count = read_int(file)
         read_int(file)  # Jack editor state
         group_id = read_int(file)
         read_int(file)  # root group id
@@ -225,12 +225,12 @@ class JmfReader:
         faces = []
         faces_count = read_int(file)
         for i in range(faces_count):
-            face = self.__readface(file)
+            face = self.readface(file)
 
             if self.wadhandler.skip_face(face):
                 continue
 
-            self.__addpolyface(face)
+            self.addpolyface(face)
             for polypoint in face.polypoints:
                 if polypoint not in self.allpolypoints:
                     self.allpolypoints.append(polypoint)
@@ -238,12 +238,42 @@ class JmfReader:
                         self.vn_map[polypoint.v] = []
                     self.vn_map[polypoint.v].append(polypoint.n)
             faces.append(face)
+
+        for i in range(curves_count):
+            self.readcurve(file)
+
         brush = Brush(faces, colour)
-        brush.group = self.__getgroup(group_id)
+        brush.group = self.getgroup(group_id)
 
         return Brush(faces, colour)
 
-    def __readface(self, file) -> Face:
+    def readcurve(self, file) -> None:
+        read_int(file)  # width
+        read_int(file)  # height
+
+        # surface properties
+        read_vector3D(file)      # rightaxis
+        read_float(file)         # shiftx
+        read_vector3D(file)      # texture['downaxis']
+        read_float(file)         # texture['shifty']
+        read_float(file)         # texture['scalex']
+        read_float(file)         # texture['scaley']
+        read_float(file)         # texture['angle']
+        file.read(16)
+        read_int(file)           # contents flags
+        read_ntstring(file, 64)  # texture name
+
+        file.read(4)  # unknown
+
+        for i in range(1024):
+            self.readcurvepoint(file)
+
+    def readcurvepoint(self, file) -> None:
+        read_vector3D(file)  # position
+        read_vector3D(file)  # normal
+        read_vector3D(file)  # texture_uv
+
+    def readface(self, file) -> JFace:
         texture = {}
 
         read_int(file)  # render flags
@@ -263,15 +293,13 @@ class JmfReader:
 
         texture['name'] = read_ntstring(file, 64)
 
-        # more padding?
-        read_float(file)
-        read_float(file)
-        read_float(file)
+        normal = read_vector3D(file)
+
         read_float(file)
         read_int(file)
 
         # Check if texture exists, or try to extract it if not
-        if texture['name'] not in self.__checked:
+        if texture['name'] not in self.checked:
             if not self.wadhandler.check_texture(texture['name']):
                 self.missing_textures = True
 
@@ -279,10 +307,10 @@ class JmfReader:
             if (texture['name'].startswith('{')
                     and texture['name'] not in self.maskedtextures):
                 self.maskedtextures.append(texture['name'])
-            self.__checked.append(texture['name'])
+            self.checked.append(texture['name'])
 
         if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.__gettexture(texture['name'])
+            tex_image = self.get_texture(texture['name'])
             texture['width'] = tex_image['width']
             texture['height'] = tex_image['height']
         else:
@@ -291,18 +319,15 @@ class JmfReader:
 
         vertices = []
         for i in range(vertex_count):
-            vertices.append(read_vector3D(file))
+            vertex = read_vector3D(file)
+            vertex += (read_float(file), read_float(file))
+            vertices.append(vertex)
 
-            # MESS speculates this is normal vector?
-            read_float(file)
-            read_float(file)
-            read_float(file)
+            read_float(file)  # Selection state
 
-        plane_points = vertices[:3]
+        return JFace(vertices, texture, normal)
 
-        return Face(vertices, plane_points, texture)
-
-    def __addpolyface(self, face: Face):
+    def addpolyface(self, face: JFace):
         tris = triangulate_face(face.vertices)
 
         for tri in tris:
@@ -317,16 +342,16 @@ class JmfReader:
 
             self.allfaces.append(polyface)
 
-    def __gettexture(self, texture: str) -> Image:
-        if texture not in self.__textures:
-            texfile = self.__filedir / f"{texture}.bmp"
+    def get_texture(self, texture: str) -> Image:
+        if texture not in self.textures:
+            texfile = self.filedir / f"{texture}.bmp"
             if not texfile.exists():
                 raise MissingTextureException(
                     f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
-                self.__textures[texture] = {
+                self.textures[texture] = {
                     'width': imgfile.width,
                     'height': imgfile.height
                 }
-        return self.__textures[texture]
+        return self.textures[texture]

@@ -53,6 +53,8 @@ def read_lpstring(file) -> str:
     strlen = read_byte(file)
     if strlen == 0:
         return ''
+    if strlen < 0:
+        strlen = 256 + strlen
     return read_ntstring(file, strlen)
 
 
@@ -195,6 +197,25 @@ class Face:
         u, v = u / self.texture['scalex'], v / self.texture['scaley']
 
         return u, v
+
+
+class JFace:
+    def __init__(self, vertices: list, texture: dict, normal: tuple = None):
+        self.vertices = vertices
+        self.texture = texture
+        self.plane_normal = normal
+
+        self.polypoints = []
+
+        for i, vertex in enumerate(self.vertices):
+            u, v = vertex[3:]
+            vertex = vertex[:3]
+            self.polypoints.append(PolyPoint(
+                Vector3D(*vertex),
+                Vector3D(u, -v, 0),
+                Vector3D(*self.plane_normal)
+            ))
+            self.vertices[i] = vertex
 
 
 class EntityPath:
