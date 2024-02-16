@@ -31,7 +31,7 @@ if config is None:
     raise Exception('Could not parse config file. See logs.')
 
 try:
-    config.parseargs(running_as_exe)
+    config.parseargs()
     filename = config.input
 except IndexError:
     if running_as_exe:
