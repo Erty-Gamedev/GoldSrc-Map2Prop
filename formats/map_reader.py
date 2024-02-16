@@ -9,7 +9,7 @@ from PIL import Image
 from pathlib import Path
 from geoutil import PolyFace, triangulate_face, Vector3D, plane_intersection
 from formats import Face
-# from formats.wad_handler import WadHandler
+from formats.wad_handler import WadHandler
 
 
 class Entity:
@@ -50,7 +50,7 @@ class MapReader:
         self.missing_textures = False
 
         self.filedir = self.filepath.parents[0]
-        # self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.wadhandler = WadHandler(self.filedir, outputdir)
 
         self.parse()
 
@@ -81,8 +81,8 @@ class MapReader:
 
                 if key == 'classname':
                     classname = value
-                if key == 'wad' and classname == 'worldspawn':
-                    self.handlewadlist(value)
+                elif key == 'wad' and classname == 'worldspawn':
+                    self.wadhandler.set_wadlist(value.split(';'))
 
                 properties[key] = value
             elif line.startswith('{'):
@@ -94,8 +94,6 @@ class MapReader:
                 raise Exception(f"Unexpected entity data: {line}")
         return Entity(classname, properties, brushes)
 
-    def handlewadlist(self, wadlist: str):
-        pass
 
     def readbrush(self, file) -> Brush:
         faces = []
