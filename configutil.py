@@ -29,8 +29,8 @@ class ConfigUtil:
 
         self.parser = argparse.ArgumentParser(
             prog='GoldSrc Map2Prop',
-            description='Converts a .rmf/.jmf or J.A.C.K .obj into goldsrc\
-.smd files for model creation.',
+            description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into \
+goldsrc .smd files for model creation.',
             exit_on_error=False
         )
 
@@ -39,7 +39,7 @@ class ConfigUtil:
 
     def parseargs(self, running_as_exe: bool):
         self.parser.add_argument('input', nargs='?', type=str,
-                                 help='.rmf/.jmf/.obj file to convert')
+                                 help='.map/.rmf/.jmf/.obj file to convert')
         self.parser.add_argument(
             '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
             help='display current version')
