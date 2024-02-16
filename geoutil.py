@@ -12,7 +12,8 @@ from triangulate.triangulate import triangulate
 
 
 PI = 3.141592653589793116
-DEG2RAD = PI / 180
+DEG2RAD = PI / 180.0
+EPSILON = 1e-10
 
 
 class PolyPoint:
@@ -20,17 +21,57 @@ class PolyPoint:
         self.v, self.t, self.n = v, t, n
 
 
+class PolyFace:
+    def __init__(self, polypoints: list, texture: str):
+        self.polypoints = polypoints
+        self.vertices = [p.v for p in self.polypoints]
+        self.texture = texture
+
+
+class HessianPlane:
+    def __init__(self, normal: Vector3D, distance: float):
+        self.normal = normal
+        self.d = distance
+        self.nd = normal, distance
+
+    def distance_to_point(self, point: Vector3D) -> float:
+        plane_point = self.normal * self.d
+        return self.normal.dot((point - plane_point))
+
+    def point_relation(self, point: Vector3D) -> int:
+        """+1 if point is in front, -1 if behind, 0 if on plane"""
+        d = self.distance_to_point(point)
+        if abs(d) < EPSILON:
+            return 0
+        return 1 if d > 0 else 0
+
+    def __str__(self):
+        return f"{self.normal} + {self.d}"
+
+    def __repr__(self):
+        return f"Plane({self.normal} + {self.d})"
+
+
+class Plane(HessianPlane):
+    def __init__(self, plane_points: list, texture: dict = {}):
+        plane_points = [Vector3D(*p) for p in plane_points[:3]]
+        plane_points.reverse()
+        super().__init__(*points_to_plane(*plane_points))
+        self.plane_points = plane_points
+        self.texture = texture
+
+
 class InvalidSolidException(Exception):
     def __init__(self, message, vertices):
         self.message = message
-        self.vertices = [(p.x, p.y, p.z) for p in vertices]
+        self.vertices = [(p[0], p[1], p[2]) for p in vertices]
         super().__init__(f"{self.message}\nVertices:\n{self.vertices}")
 
 
-def get_triples(vertices: list, last_two_and_first: bool = True):
-    triples = [vertices[i:i + 3] for i in range(len(vertices) - 2)]
+def get_triples(items: list, last_two_and_first: bool = True):
+    triples = [items[i:i + 3] for i in range(len(items) - 2)]
     if last_two_and_first:
-        triples.append([vertices[-2], vertices[-1], vertices[0]])
+        triples.append([items[-2], items[-1], items[0]])
     return triples
 
 
@@ -39,15 +80,11 @@ def direction(angle: float) -> int:
 
 
 def segments_dot(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
-    vector_ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
-    vector_bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
-    return vector_ab.dot(vector_bc)
+    return (a - b).dot(b - c)
 
 
 def segments_cross(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
-    ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
-    bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
-    return ab.cross(bc)
+    return (c - b).cross(a - b)
 
 
 def clip(value, minimum, maximum):
@@ -125,24 +162,20 @@ def flatten_plane(polygon: list):
 def is_point_on_plane(point: Vector3D, normal, k) -> bool:
     a, b, c = normal
     return abs(
-        a * point.x + b * point.y + c * point.z + k) < 0.0078125
+        a * point.x + b * point.y + c * point.z + k) < EPSILON
 
 
 def plane_normal(plane_points: tuple):
-    return segments_cross(*plane_points).normal
+    return segments_cross(*plane_points).normalized
+
+
+def points_to_plane(a, b, c):
+    normal = segments_cross(a, b, c).normalized
+    return normal, normal.dot(a)
 
 
 def polygon_to_plane(polygon: list):
-    first_points = polygon[:3]
-    first_point = first_points[0]
-    normal = plane_normal(first_points)
-    k = -(
-        normal[0]*first_point.x
-        + normal[1]*first_point.y
-        + normal[2]*first_point.z
-    )
-
-    return normal, k
+    return points_to_plane(*polygon[:3])
 
 
 def check_planar(polygon: list) -> bool:
@@ -174,7 +207,7 @@ def sum_vectors(vectors: list) -> Vector3D:
 
 
 def average_normals(normals: list) -> Vector3D:
-    return (sum_vectors(normals) / len(normals)).normal
+    return (sum_vectors(normals) / len(normals)).normalized
 
 
 def average_near_normals(normals: list, threshold: float) -> dict:
@@ -209,8 +242,56 @@ def average_near_normals(normals: list, threshold: float) -> dict:
     return new_normals
 
 
-class PolyFace:
-    def __init__(self, polypoints: list, texture: str):
-        self.polypoints = polypoints
-        self.vertices = [p.v for p in self.polypoints]
-        self.texture = texture
+def intersection_3planes(p1: HessianPlane,
+                         p2: HessianPlane,
+                         p3: HessianPlane) -> Vector3D:
+    n1, d1 = p1.nd
+    n2, d2 = p2.nd
+    n3, d3 = p3.nd
+
+    denominator = n1.dot(n2.cross(n3))
+    if abs(denominator) < EPSILON:
+        return False
+
+    return -(
+        -d1 * n2.cross(n3)
+        - d2 * n3.cross(n1)
+        - d3 * n1.cross(n2)
+    ) / denominator
+
+
+def geometric_center(vertices: list) -> Vector3D:
+    center = Vector3D(0, 0, 0)
+
+    for vertex in vertices:
+        center += vertex
+
+    return center / len(vertices)
+
+
+def sort_vertices(vertices: list, normal: Vector3D) -> list:
+    center = geometric_center(vertices)
+    num_vertices = len(vertices)
+
+    for i in range(num_vertices - 2):
+        a = (vertices[i] - center).normalized
+        p = Plane([vertices[i], center, center + normal])
+
+        angle_smallest = -1
+        smallest = -1
+
+        for j in range(i + 1, num_vertices):
+            if p.point_relation(vertices[j]) != -1:
+                b = (vertices[j] - center).normalized
+                angle = a.dot(b)
+                if angle > angle_smallest:
+                    angle_smallest = angle
+                    smallest = j
+
+        vertices[i+1], vertices[smallest] = vertices[smallest], vertices[i+1]
+
+    sorted_normal = plane_normal(vertices[:3])
+    if normal.dot(sorted_normal) < 0:
+        vertices = list(reversed(vertices))
+
+    return vertices

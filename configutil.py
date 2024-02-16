@@ -13,7 +13,7 @@ from logutil import get_logger, shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.8.4-beta'
+VERSION = '0.8.5-beta'
 
 
 class ConfigUtil:
@@ -38,9 +38,8 @@ class ConfigUtil:
         self.parser.exit(status, message)
 
     def parseargs(self, running_as_exe: bool):
-        if True or running_as_exe:
-            self.parser.add_argument('input', nargs='?', type=str,
-                                     help='.rmf/.jmf/.obj file to convert')
+        self.parser.add_argument('input', nargs='?', type=str,
+                                 help='.rmf/.jmf/.obj file to convert')
         self.parser.add_argument(
             '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
             help='display current version')

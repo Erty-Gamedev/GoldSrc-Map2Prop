@@ -49,21 +49,21 @@ class ObjReader:
         self.allfaces = []
         self.allpolypoints = []
         self.vn_map = {}
-        self.__checked = []
+        self.checked = []
         self.missing_textures = False
 
-        self.__logger = get_logger(__name__)
-        self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir, outputdir)
+        self.logger = get_logger(__name__)
+        self.filedir = self.filepath.parents[0]
+        self.wadhandler = WadHandler(self.filedir, outputdir)
 
-        self.__readfile()
+        self.readfile()
 
-        shutdown_logger(self.__logger)
+        shutdown_logger(self.logger)
 
     def __del__(self):
-        shutdown_logger(self.__logger)
+        shutdown_logger(self.logger)
 
-    def __readfile(self):
+    def readfile(self):
         with self.filepath.open('r') as objfile:
             current_obj = ''
 
@@ -106,7 +106,7 @@ class ObjReader:
                     tex = line[len(usemtl_prefix):]
 
                     # Check if texture exists, or try to extract it if not
-                    if tex not in self.__checked:
+                    if tex not in self.checked:
                         if not self.wadhandler.check_texture(tex):
                             self.missing_textures = True
 
@@ -114,7 +114,7 @@ class ObjReader:
                         if (tex.startswith('{')
                                 and tex not in self.maskedtextures):
                             self.maskedtextures.append(tex)
-                        self.__checked.append(tex)
+                        self.checked.append(tex)
 
                 # Parse faces:
                 elif line.startswith(poly_face_prefix):
@@ -144,7 +144,7 @@ class ObjReader:
                     try:
                         tris = triangulate_face(verts)
                     except Exception:
-                        self.__logger.exception('Face triangulation failed')
+                        self.logger.exception('Face triangulation failed')
                         raise
 
                     for tri in tris:
@@ -158,7 +158,7 @@ class ObjReader:
                         try:
                             polyface = PolyFace(face, tex)
                         except InvalidSolidException as ise:
-                            self.__logger.error(
+                            self.logger.error(
                                 "Object had one or more invalid faces: " +
                                 f"{ise.message}")
                             raise

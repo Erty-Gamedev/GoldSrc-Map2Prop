@@ -17,6 +17,7 @@ from formats import InvalidFormatException, MissingTextureException
 from formats.obj_reader import ObjReader
 from formats.rmf_reader import RmfReader
 from formats.jmf_reader import JmfReader
+from formats.map_reader import MapReader
 
 
 logger = get_logger(__name__)
@@ -60,6 +61,8 @@ try:
         filereader = RmfReader(filepath, outputdir)
     elif extension == '.jmf':
         filereader = JmfReader(filepath, outputdir)
+    elif extension == '.map':
+        filereader = MapReader(filepath, outputdir)
     else:
         logger.info(
             'Invalid file type. Must be .obj, .rmf, or .jmf, but '

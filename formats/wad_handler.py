@@ -114,6 +114,10 @@ application or extract the textures manually prior to compilation.""")
     def get_texture(self, texture: str) -> TextureEntry:
         return self.__textures[texture]
 
+    def set_wadlist(self, wads: list) -> None:
+        if wads and isinstance(wads, (list, tuple)):
+            self.__wad_list = [Path(w) for w in wads]
+
     @classmethod
     def skip_face(cls, face: Face) -> bool:
         return face.texture['name'].lower() in cls.SKIP_TEXTURES

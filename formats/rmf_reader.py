@@ -33,16 +33,16 @@ class RmfReader:
         self.vn_map = {}
         self.maskedtextures = []
 
-        self.__checked = []
-        self.__textures = {}
+        self.checked = []
+        self.textures = {}
         self.missing_textures = False
 
-        self.__filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.__filedir, outputdir)
+        self.filedir = self.filepath.parents[0]
+        self.wadhandler = WadHandler(self.filedir, outputdir)
 
-        self.__parse()
+        self.parse()
 
-    def __parse(self):
+    def parse(self):
         with self.filepath.open('rb') as mapfile:
             self.version = read_float(mapfile)
 
@@ -54,7 +54,7 @@ class RmfReader:
             visgroups_count = read_int(mapfile)
 
             for i in range(visgroups_count):
-                visgroup = self.__readvisgroup(mapfile)
+                visgroup = self.readvisgroup(mapfile)
                 self.visgroups[visgroup.id] = visgroup
 
             read_lpstring(mapfile)  # "CMapWorld"
@@ -62,14 +62,14 @@ class RmfReader:
 
             objects_count = read_int(mapfile)
             for i in range(objects_count):
-                obj, vis_id = self.__readobject(mapfile)
+                obj, vis_id = self.readobject(mapfile)
                 if vis_id > 0 and vis_id in self.visgroups:
                     obj.visgroup = self.visgroups[vis_id]
-                self.__addobject(obj)
+                self.addobject(obj)
 
             read_lpstring(mapfile)  # "worldspawn"
             mapfile.read(4)  # Padding?
-            self.properties['__spawnflags'] = read_int(mapfile)
+            self.properties['spawnflags'] = read_int(mapfile)
 
             worldspawn_properties_count = read_int(mapfile)
             for i in range(worldspawn_properties_count):
@@ -79,9 +79,9 @@ class RmfReader:
 
             path_count = read_int(mapfile)
             for i in range(path_count):
-                self.entity_paths.append(self.__readpath(mapfile))
+                self.entity_paths.append(self.readpath(mapfile))
 
-    def __readvisgroup(self, file) -> VisGroup:
+    def readvisgroup(self, file) -> VisGroup:
         name = read_ntstring(file, 128)
         colour = read_colour(file)
         file.read(1)  # Padding byte
@@ -90,19 +90,19 @@ class RmfReader:
         file.read(3)  # Padding bytes
         return VisGroup(visgroup_id, name, colour, visible)
 
-    def __readobject(self, file) -> tuple:
+    def readobject(self, file) -> tuple:
         typename = read_lpstring(file)
 
         if typename == 'CMapSolid':
-            return self.__readbrush(file)
+            return self.readbrush(file)
         elif typename == 'CMapEntity':
-            return self.__readentity(file)
+            return self.readentity(file)
         elif typename == 'CMapGroup':
-            return self.__readgroup(file)
+            return self.readgroup(file)
         else:
             raise Exception(f"Invalid object type: {typename}")
 
-    def __readbrush(self, file) -> Brush:
+    def readbrush(self, file) -> Brush:
         visgroup_id = read_int(file)
         colour = read_colour(file)
         file.read(4)  # Padding?
@@ -110,12 +110,12 @@ class RmfReader:
         faces = []
         faces_count = read_int(file)
         for i in range(faces_count):
-            face = self.__readface(file)
+            face = self.readface(file)
 
             if self.wadhandler.skip_face(face):
                 continue
 
-            self.__addpolyface(face)
+            self.addpolyface(face)
             for polypoint in face.polypoints:
                 if polypoint not in self.allpolypoints:
                     self.allpolypoints.append(polypoint)
@@ -125,7 +125,7 @@ class RmfReader:
             faces.append(face)
         return Brush(faces, colour), visgroup_id
 
-    def __addpolyface(self, face: Face):
+    def addpolyface(self, face: Face):
         tris = triangulate_face(face.vertices)
 
         for tri in tris:
@@ -140,25 +140,25 @@ class RmfReader:
 
             self.allfaces.append(polyface)
 
-    def __gettexture(self, texture: str) -> Image:
-        if texture not in self.__textures:
-            texfile = self.__filedir / f"{texture}.bmp"
+    def get_texture(self, texture: str) -> Image:
+        if texture not in self.textures:
+            texfile = self.filedir / f"{texture}.bmp"
             if not texfile.exists():
                 raise MissingTextureException(
                     f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
-                self.__textures[texture] = {
+                self.textures[texture] = {
                     'width': imgfile.width,
                     'height': imgfile.height
                 }
-        return self.__textures[texture]
+        return self.textures[texture]
 
-    def __readface(self, file) -> Face:
+    def readface(self, file) -> Face:
         texture = {'name': read_ntstring(file, 256)}
 
         # Check if texture exists, or try to extract it if not
-        if texture['name'] not in self.__checked:
+        if texture['name'] not in self.checked:
             if not self.wadhandler.check_texture(texture['name']):
                 self.missing_textures = True
 
@@ -166,7 +166,7 @@ class RmfReader:
             if (texture['name'].startswith('{')
                     and texture['name'] not in self.maskedtextures):
                 self.maskedtextures.append(texture['name'])
-            self.__checked.append(texture['name'])
+            self.checked.append(texture['name'])
 
         file.read(4)  # Padding? Note: MESS reads these 4 as a float
 
@@ -179,7 +179,7 @@ class RmfReader:
         texture['scaley'] = read_float(file)
 
         if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.__gettexture(texture['name'])
+            tex_image = self.get_texture(texture['name'])
             texture['width'] = tex_image['width']
             texture['height'] = tex_image['height']
         else:
@@ -203,7 +203,7 @@ class RmfReader:
 
         return Face(vertices, plane_points, texture)
 
-    def __readentity(self, file) -> Entity:
+    def readentity(self, file) -> Entity:
         visgroup_id = read_int(file)
         colour = read_colour(file)
 
@@ -211,7 +211,7 @@ class RmfReader:
         brush_count = read_int(file)
         for i in range(brush_count):
             read_lpstring(file)  # "CMapSolid"
-            brush, _ = self.__readbrush(file)
+            brush, _ = self.readbrush(file)
             brushes.append(brush)
 
         classname = read_lpstring(file)
@@ -233,20 +233,20 @@ class RmfReader:
         return Entity(brushes, colour, classname, flags,
                       properties, origin), visgroup_id
 
-    def __readgroup(self, file) -> tuple:
+    def readgroup(self, file) -> tuple:
         visgroup_id = read_int(file)
         colour = read_colour(file)
         group = Group(colour, [])
 
         object_count = read_int(file)
         for i in range(object_count):
-            obj, _ = self.__readobject(file)
+            obj, _ = self.readobject(file)
             obj.group = group
             group.objects.append(obj)
 
         return group, visgroup_id
 
-    def __addobject(self, obj: MapObject):
+    def addobject(self, obj: MapObject):
         if isinstance(obj, Entity):
             self.entities.append(obj)
         elif isinstance(obj, Brush):
@@ -255,9 +255,9 @@ class RmfReader:
             obj.id = len(self.groups)
             self.groups.append(obj)
             for child in obj.objects:
-                self.__addobject(child)
+                self.addobject(child)
 
-    def __readpath(self, file) -> EntityPath:
+    def readpath(self, file) -> EntityPath:
         name = read_ntstring(file, 128)
         classname = read_ntstring(file, 128)
         pathtype = read_int(file)
@@ -265,11 +265,11 @@ class RmfReader:
         nodes = []
         node_count = read_int(file)
         for i in range(node_count):
-            nodes.append(self.__readpathnode(file))
+            nodes.append(self.readpathnode(file))
 
         return EntityPath(name, classname, pathtype, nodes)
 
-    def __readpathnode(self, file) -> PathNode:
+    def readpathnode(self, file) -> PathNode:
         position = read_vector3D(file)
         index = read_int(file)
         name_override = read_ntstring(file, 128)
