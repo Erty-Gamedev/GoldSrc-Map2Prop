@@ -176,14 +176,6 @@ class MapReader:
             'height': 16,
         }
 
-        if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.get_texture(texture['name'])
-            texture['width'] = tex_image['width']
-            texture['height'] = tex_image['height']
-        else:
-            texture['width'] = 16
-            texture['height'] = 16
-
         # Check if texture exists, or try to extract it if not
         if texture['name'] not in self.checked:
             if not self.wadhandler.check_texture(texture['name']):
@@ -194,6 +186,14 @@ class MapReader:
                     and texture['name'] not in self.maskedtextures):
                 self.maskedtextures.append(texture['name'])
             self.checked.append(texture['name'])
+
+        if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
+            tex_image = self.get_texture(texture['name'])
+            texture['width'] = tex_image['width']
+            texture['height'] = tex_image['height']
+        else:
+            texture['width'] = 16
+            texture['height'] = 16
 
         return Plane(plane_points, texture)
 
