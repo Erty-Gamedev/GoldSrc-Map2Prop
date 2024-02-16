@@ -2,7 +2,7 @@
 
 ## Introduction
 
-GoldSrc Map2Prop is a tool for converting .rmf and .jmf files, as well as .obj files exported from the Steam version of J.A.C.K, to goldsrc .smd file that can then be compiled into a goldsrc format studio model without the hastle of using an 3D editor.
+GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files, as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that can then be compiled into a GoldSrc format studio model without the hassle of using an 3D editor.
 
 ### Supported platforms
 Currently only supported on Windows.<br>
@@ -45,13 +45,11 @@ If the path to a [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_s
 
 ### Exporting .obj file from J.A.C.K
 
-*(Only available in the paid version of J.A.C.K)*
-
 Either copy your object to a new, empty file or select the object in J.A.C.K and go to *File* -> *Export to OBJ...*
 
 ## Reporting Problems/Bugs
 
-Please notify Erty (erty.gamedev@gmail.com) along with the project file (either .rmf/.jmf, or .obj and its associated .mtl file) that was used as well as the logs/ folder produced by the executable.
+Please notify Erty (erty.gamedev@gmail.com) along with the project file (either .map/.rmf/.jmf, or .obj and its associated .mtl file) that was used as well as the logs/ folder produced by the executable.
 
 ## Features
 
@@ -78,7 +76,8 @@ Currently planning on using an option to split up an input file into several mod
 
 ## Special Thanks
 
-Thanks to Captain P for showing me the .rmf/.jmf parsing code from MESS!
+Thanks to Captain P for all the help and advice, as well as showing me the .rmf/.jmf parsing code from MESS!
+Thanks to Penguinboy for the tips and being very helpful with any questions I've had.
 
 ### Alpha Testers
 Many thanks goes out to the kind people who helped me test this program and provide useful feedback and suggestions during its alpha stage:
