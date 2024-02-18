@@ -36,7 +36,8 @@ try:
 except IndexError:
     if running_as_exe:
         logger.info('Attempted to run without providing file')
-        input(enter_to_exit)
+        if not config.autoexit:
+            input(enter_to_exit)
         config.app_exit(2, 'Attempted to run without providing file')
     else:
         filename = r'test/cratetest.obj'
@@ -67,22 +68,22 @@ try:
         logger.info(
             'Invalid file type. Must be .obj, .rmf, or .jmf, but '
             + f"was {filepath.suffix}")
-        if running_as_exe:
+        if running_as_exe and not config.autoexit:
             input(enter_to_exit)
         config.app_exit(2, 'File type must be .obj, .rmf, or .jmf!')
 except MissingTextureException as e:
     logger.info(str(e))
-    if running_as_exe:
+    if running_as_exe and not config.autoexit:
         input(enter_to_exit)
     config.app_exit(1, str(e))
 except InvalidFormatException as e:
     logger.error(str(e))
-    if running_as_exe:
+    if running_as_exe and not config.autoexit:
         input(enter_to_exit)
     config.app_exit(1, str(e))
 except ValueError as e:
     logger.error(str(e))
-    if running_as_exe:
+    if running_as_exe and not config.autoexit:
         input(enter_to_exit)
     config.app_exit(1, str(e))
 
@@ -134,6 +135,7 @@ time 0
 end
 triangles
 ''')
+
     for face in filereader.allfaces:
         output.write(f"{face.texture}.bmp\n")
 
@@ -214,5 +216,5 @@ if config.autocompile:
 
 shutdown_logger(logger)
 
-if running_as_exe:
+if running_as_exe and not config.autoexit:
     input(enter_to_exit)

@@ -67,6 +67,9 @@ goldsrc .smd files for model creation.',
         general.add_argument(
             '-a', '--autocompile', action='store_true',
             help='compile model after conversion')
+        general.add_argument(
+            '-x', '--autoexit', action='store_true',
+            help='don\'t ask for input after finish')
 
         qc = self.parser.add_argument_group('.qc options')
         qc.add_argument(
@@ -166,6 +169,11 @@ goldsrc .smd files for model creation.',
     def autocompile(self) -> bool:
         return (self.args.autocompile
                 or self.config['AppConfig'].getboolean('autocompile', False))
+
+    @property
+    def autoexit(self) -> bool:
+        return (self.args.autoexit
+                or self.config['AppConfig'].getboolean('autoexit', False))
 
     @property
     def smoothing(self) -> bool:
