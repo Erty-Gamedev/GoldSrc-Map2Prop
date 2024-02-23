@@ -5,7 +5,6 @@ Created on Thu May 18 10:38:39 2023
 @author: Erty
 """
 
-
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
 from triangulate.triangulate import triangulate
@@ -80,22 +79,27 @@ def direction(angle: float) -> int:
 
 
 def segments_dot(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    """Finds the dot product between the segments AB and BC"""
     return (a - b).dot(b - c)
 
 
 def segments_cross(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    """Finds the cross product between the segments AB and BC"""
     return (c - b).cross(a - b)
 
 
 def clip(value, minimum, maximum):
+    """Limit the value between the minimum and maximum"""
     return min(maximum, max(minimum, value))
 
 
-def vectors_angle(a: Vector3D, b: Vector3D):
+def vectors_angle(a: Vector3D, b: Vector3D) -> float:
+    """Returns the angle between two vectors"""
     return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
 
 
-def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D):
+def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D) -> float:
+    """Returns the angle between the segments ab and bc in radians"""
     vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
     vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
     return vectors_angle(vector_ab, vector_bc)
@@ -122,17 +126,20 @@ def plane_rotation(normal, d):
     ]
 
 
-def deg2rad(degrees) -> float:
-    return degrees * DEG2RAD
+def deg2rad(degrees: float) -> float:
+    """Convert degrees to radians"""
+    return (degrees * DEG2RAD) % (2 * PI)
 
 
 def rotate_2d(vector: tuple, degrees: float) -> tuple:
+    """Rotate the 2D vector by the given angle in degrees"""
     x, y = vector
     th = deg2rad(degrees)
     return x * cos(th) - y * sin(th), x * sin(th) + y * cos(th)
 
 
-def polygon_transpose(polygon, vector):
+def polygon_transpose(polygon: list, vector: Vector3D) -> list:
+    """Transpose all points in the polygon by the given vector"""
     new_poly = []
     for point in polygon:
         new_poly.append(Vector3D(
@@ -159,40 +166,23 @@ def flatten_plane(polygon: list):
     return new_poly
 
 
-def is_point_on_plane(point: Vector3D, normal, k) -> bool:
-    a, b, c = normal
-    return abs(
-        a * point.x + b * point.y + c * point.z + k) < EPSILON
-
-
-def plane_normal(plane_points: tuple):
+def plane_normal(plane_points: tuple) -> Vector3D:
+    """Returns the normalized normal vector of the plane"""
     return segments_cross(*plane_points).normalized
 
 
-def points_to_plane(a, b, c):
+def points_to_plane(a, b, c) -> tuple:
+    """Return the plane's normal vector and distance by three points"""
     normal = segments_cross(a, b, c).normalized
     return normal, normal.dot(a)
 
 
-def polygon_to_plane(polygon: list):
+def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
 
 
-def check_planar(polygon: list) -> bool:
-    if len(polygon) < 3:
-        return False
-    if len(polygon) == 3:
-        return True
-
-    normal, k = polygon_to_plane(polygon)
-
-    for point in polygon[3:]:
-        if not is_point_on_plane(point, normal, k):
-            return False
-    return True
-
-
 def triangulate_face(polygon: list) -> list:
+    """Returns a list of triangulated polygons from the polygon"""
     tris = []
     try:
         for tri in triangulate(polygon):
@@ -245,6 +235,9 @@ def average_near_normals(normals: list, threshold: float) -> dict:
 def intersection_3planes(p1: HessianPlane,
                          p2: HessianPlane,
                          p3: HessianPlane) -> Vector3D:
+    """Returns the intersection of the three planes,
+    or false if there is no interesection
+    """
     n1, d1 = p1.nd
     n2, d2 = p2.nd
     n3, d3 = p3.nd
@@ -261,6 +254,7 @@ def intersection_3planes(p1: HessianPlane,
 
 
 def geometric_center(vertices: list) -> Vector3D:
+    """Returns the geometric center of the given vertices"""
     center = Vector3D(0, 0, 0)
 
     for vertex in vertices:
@@ -270,6 +264,7 @@ def geometric_center(vertices: list) -> Vector3D:
 
 
 def sort_vertices(vertices: list, normal: Vector3D) -> list:
+    """Returns a sorted list of vertices from an unsorted list"""
     center = geometric_center(vertices)
     num_vertices = len(vertices)
 
