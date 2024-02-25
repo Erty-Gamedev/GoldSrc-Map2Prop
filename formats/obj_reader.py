@@ -7,7 +7,7 @@ Created on Tue May 30 10:40:33 2023
 
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import (Vector3D, PolyPoint, PolyFace,
+from geoutil import (Vector3D, Vertex, PolyFace,
                      InvalidSolidException, triangulate_face)
 from formats.wad_handler import WadHandler
 
@@ -47,7 +47,7 @@ class ObjReader:
         self.objects = {}
         self.maskedtextures = []
         self.allfaces = []
-        self.allpolypoints = []
+        self.allvertices = []
         self.vn_map = {}
         self.checked = []
         self.missing_textures = False
@@ -121,28 +121,28 @@ class ObjReader:
                     if tex.lower() in self.wadhandler.SKIP_TEXTURES:
                         continue
 
-                    points = line[len(poly_face_prefix):].split(' ')
+                    facepoints = line[len(poly_face_prefix):].split(' ')
 
-                    verts = []
-                    polypoints = []
-                    for point in points:
-                        i_v, i_t, i_n = [int(n) for n in point.split('/')]
-                        polypoint = PolyPoint(
+                    points = []
+                    vertices = []
+                    for facepoint in facepoints:
+                        i_v, i_t, i_n = [int(n) for n in facepoint.split('/')]
+                        vertex = Vertex(
                             self.vertexcoords[i_v - 1],
                             self.texturecoords[i_t - 1],
                             self.normalcoords[i_n - 1]
                         )
 
-                        if polypoint.v not in self.vn_map:
-                            self.vn_map[polypoint.v] = []
-                        self.vn_map[polypoint.v].append(polypoint.n)
+                        if vertex.v not in self.vn_map:
+                            self.vn_map[vertex.v] = []
+                        self.vn_map[vertex.v].append(vertex.n)
 
-                        polypoints.append(polypoint)
-                        self.allpolypoints.append(polypoint)
-                        verts.append(self.vertexcoords[i_v - 1])
+                        vertices.append(vertex)
+                        self.allvertices.append(vertex)
+                        points.append(self.vertexcoords[i_v - 1])
 
                     try:
-                        tris = triangulate_face(verts)
+                        tris = triangulate_face(points)
                     except Exception:
                         self.logger.exception('Face triangulation failed')
                         raise
@@ -150,9 +150,9 @@ class ObjReader:
                     for tri in tris:
                         face = []
                         for p in tri:
-                            for polyp in polypoints:
-                                if p == polyp.v:
-                                    face.append(polyp)
+                            for vertex in vertices:
+                                if p == vertex.v:
+                                    face.append(vertex)
                                     break
 
                         try:

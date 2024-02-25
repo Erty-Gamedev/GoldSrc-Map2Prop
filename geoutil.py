@@ -15,15 +15,15 @@ DEG2RAD = PI / 180.0
 EPSILON = 1e-10
 
 
-class PolyPoint:
+class Vertex:
     def __init__(self, v: Vector3D, t: Vector3D, n: Vector3D):
         self.v, self.t, self.n = v, t, n
 
 
 class PolyFace:
-    def __init__(self, polypoints: list, texture: str):
-        self.polypoints = polypoints
-        self.vertices = [p.v for p in self.polypoints]
+    def __init__(self, vertices: list, texture: str):
+        self.vertices = vertices
+        self.points = [p.v for p in self.vertices]
         self.texture = texture
 
 

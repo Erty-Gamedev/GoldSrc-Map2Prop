@@ -6,7 +6,7 @@ Created on Tue May 30 10:38:33 2023
 """
 
 from struct import unpack
-from geoutil import Vector3D, PolyPoint, plane_normal
+from geoutil import Vector3D, Vertex, plane_normal
 
 
 def read_byte(file) -> bytes:
@@ -159,17 +159,17 @@ class Plane:
 
 
 class Face:
-    def __init__(self, vertices: list, plane_points: list, texture: dict):
-        self.vertices = vertices
+    def __init__(self, points: list, plane_points: list, texture: dict):
+        self.points = points
         self.plane_points = [Vector3D(*p) for p in plane_points]
         self.texture = texture
         self.plane_normal = plane_normal(self.plane_points)
 
-        self.polypoints = []
+        self.vertices = []
 
-        for vertex in self.vertices:
+        for vertex in self.points:
             u, v = self.__project_uv(vertex)
-            self.polypoints.append(PolyPoint(
+            self.vertices.append(Vertex(
                 Vector3D(*vertex),
                 Vector3D(
                     u / self.texture['width'],
@@ -200,22 +200,22 @@ class Face:
 
 
 class JFace:
-    def __init__(self, vertices: list, texture: dict, normal: tuple = None):
-        self.vertices = vertices
+    def __init__(self, points: list, texture: dict, normal: tuple = None):
+        self.points = points
         self.texture = texture
         self.plane_normal = normal
 
-        self.polypoints = []
+        self.vertices = []
 
-        for i, vertex in enumerate(self.vertices):
+        for i, vertex in enumerate(self.points):
             u, v = vertex[3:]
             vertex = vertex[:3]
-            self.polypoints.append(PolyPoint(
+            self.vertices.append(Vertex(
                 Vector3D(*vertex),
                 Vector3D(u, -v, 0),
                 Vector3D(*self.plane_normal)
             ))
-            self.vertices[i] = vertex
+            self.points[i] = vertex
 
 
 class EntityPath:

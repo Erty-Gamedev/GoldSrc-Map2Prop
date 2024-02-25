@@ -29,7 +29,7 @@ class RmfReader:
         self.entity_paths = []
 
         self.allfaces = []
-        self.allpolypoints = []
+        self.allvertices = []
         self.vn_map = {}
         self.maskedtextures = []
 
@@ -116,24 +116,24 @@ class RmfReader:
                 continue
 
             self.addpolyface(face)
-            for polypoint in face.polypoints:
-                if polypoint not in self.allpolypoints:
-                    self.allpolypoints.append(polypoint)
-                    if polypoint.v not in self.vn_map:
-                        self.vn_map[polypoint.v] = []
-                    self.vn_map[polypoint.v].append(polypoint.n)
+            for vertex in face.vertices:
+                if vertex not in self.allvertices:
+                    self.allvertices.append(vertex)
+                    if vertex.v not in self.vn_map:
+                        self.vn_map[vertex.v] = []
+                    self.vn_map[vertex.v].append(vertex.n)
             faces.append(face)
         return Brush(faces, colour), visgroup_id
 
     def addpolyface(self, face: Face):
-        tris = triangulate_face(face.vertices)
+        tris = triangulate_face(face.points)
 
         for tri in tris:
             tri_face = []
             for p in tri:
-                for polyp in face.polypoints:
-                    if p == polyp.v:
-                        tri_face.append(polyp)
+                for vertex in face.vertices:
+                    if p == vertex.v:
+                        tri_face.append(vertex)
                         break
 
             polyface = PolyFace(tri_face, face.texture['name'])

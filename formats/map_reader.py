@@ -7,7 +7,7 @@ Created on Fri Jul 21 15:31:22 2023
 
 from PIL import Image
 from pathlib import Path
-from geoutil import (PolyFace, PolyPoint, Plane, triangulate_face, Vector3D,
+from geoutil import (PolyFace, Vertex, Plane, triangulate_face, Vector3D,
                      intersection_3planes, sort_vertices)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
@@ -33,23 +33,23 @@ class Brush:
 
 
 class Face:
-    def __init__(self, vertices: list, texture: dict, normal: Vector3D):
-        self.vertices = sort_vertices(vertices, normal)
+    def __init__(self, points: list, texture: dict, normal: Vector3D):
+        self.points = sort_vertices(points, normal)
         self.texture = texture
 
-        self.polypoints = []
+        self.vertices = []
 
         nu, nv = texture['rightaxis'], texture['downaxis']
         w, h = texture['width'], texture['height']
         su, sv = texture['scalex'], texture['scaley']
         ou, ov = texture['shiftx'], texture['shifty']
 
-        for vertex in self.vertices:
-            u = (vertex.dot(nu)/w)/su + ou/w
-            v = (vertex.dot(nv)/h)/sv + ov/h
+        for point in self.points:
+            u = (point.dot(nu)/w)/su + ou/w
+            v = (point.dot(nv)/h)/sv + ov/h
 
-            self.polypoints.append(PolyPoint(
-                vertex,
+            self.vertices.append(Vertex(
+                point,
                 Vector3D(u, -v, 0),
                 normal
             ))
@@ -67,7 +67,7 @@ class MapReader:
         self.entity_paths = []
 
         self.allfaces = []
-        self.allpolypoints = []
+        self.allvertices = []
         self.vn_map = {}
         self.maskedtextures = []
 
@@ -136,17 +136,18 @@ class MapReader:
 
         faces = self.faces_from_planes(planes)
 
+        face: Face
         for face in faces:
             if self.wadhandler.skip_face(face):
                 continue
 
             self.addpolyface(face)
-            for polypoint in face.polypoints:
-                if polypoint not in self.allpolypoints:
-                    self.allpolypoints.append(polypoint)
-                    if polypoint.v not in self.vn_map:
-                        self.vn_map[polypoint.v] = []
-                    self.vn_map[polypoint.v].append(polypoint.n)
+            for vertex in face.vertices:
+                if vertex not in self.allvertices:
+                    self.allvertices.append(vertex)
+                    if vertex.v not in self.vn_map:
+                        self.vn_map[vertex.v] = []
+                    self.vn_map[vertex.v].append(vertex.n)
 
         return Brush(faces)
 
@@ -236,14 +237,14 @@ class MapReader:
         return [Face(f['vertices'], f['texture'], f['normal']) for f in faces]
 
     def addpolyface(self, face: Face):
-        tris = triangulate_face(face.vertices)
+        tris = triangulate_face(face.points)
 
         for tri in tris:
             tri_face = []
             for p in tri:
-                for polyp in face.polypoints:
-                    if p == polyp.v:
-                        tri_face.append(polyp)
+                for vertex in face.vertices:
+                    if p == vertex.v:
+                        tri_face.append(vertex)
                         break
 
             polyface = PolyFace(tri_face, face.texture['name'])

@@ -11,7 +11,8 @@ import sys
 import subprocess
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import Vector3D, average_normals, average_near_normals, deg2rad
+from geoutil import (Vector3D, PolyFace, average_normals,
+                     average_near_normals, deg2rad)
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
 from formats.obj_reader import ObjReader
@@ -108,14 +109,14 @@ if smooth:
         averaged_normals = {}
         smooth_rad = deg2rad(smoothing)
 
-        for point in filereader.allpolypoints:
+        for point in filereader.allvertices:
             if point.v not in averaged_normals:
                 averaged_normals[point.v] = average_near_normals(
                     filereader.vn_map[point.v], smooth_rad)
             point.n = averaged_normals[point.v][point.n]
 
     else:
-        for point in filereader.allpolypoints:
+        for point in filereader.allvertices:
             normals = filereader.vn_map[point.v]
             if not isinstance(normals, Vector3D):
                 normals = average_normals(normals)
@@ -136,19 +137,20 @@ end
 triangles
 ''')
 
+    face: PolyFace
     for face in filereader.allfaces:
         output.write(f"{face.texture}.bmp\n")
 
-        for p in face.polypoints:
+        for v in face.vertices:
             line = "0\t"
             if extension == '.obj':
-                line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, -p.v.z, p.v.y)
-                line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, -p.n.z, p.n.y)
-                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(v.v.x, -v.v.z, v.v.y)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(v.n.x, -v.n.z, v.n.y)
+                line += "{:.6f} {:.6f}".format(v.t.x, v.t.y + 1)
             else:
-                line += "{:.6f} {:.6f} {:.6f}\t".format(p.v.x, p.v.y, p.v.z)
-                line += "{:.6f} {:.6f} {:.6f}\t".format(p.n.x, p.n.y, p.n.z)
-                line += "{:.6f} {:.6f}".format(p.t.x, p.t.y + 1)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(v.v.x, v.v.y, v.v.z)
+                line += "{:.6f} {:.6f} {:.6f}\t".format(v.n.x, v.n.y, v.n.z)
+                line += "{:.6f} {:.6f}".format(v.t.x, v.t.y + 1)
             output.write(line + "\n")
 
     output.write('end' + "\n")
