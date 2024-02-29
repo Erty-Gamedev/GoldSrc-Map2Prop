@@ -10,6 +10,7 @@ from pathlib import Path
 from geoutil import (PolyFace, Vertex, Plane, triangulate_face, Vector3D,
                      intersection_3planes, sort_vertices)
 from formats import MissingTextureException
+from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
 
 
@@ -56,7 +57,7 @@ class Face:
         # TODO: normalize UV
 
 
-class MapReader:
+class MapReader(BaseReader):
     """Reads a .map format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):

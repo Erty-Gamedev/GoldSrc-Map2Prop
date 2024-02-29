@@ -13,10 +13,11 @@ from formats import (read_bool, read_int, read_float, read_ntstring,
                      InvalidFormatException, MissingTextureException,
                      Face, VisGroup, MapObject, Brush, Entity, Group,
                      EntityPath, PathNode)
+from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
 
 
-class RmfReader:
+class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):

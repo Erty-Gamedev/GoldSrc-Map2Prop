@@ -14,10 +14,11 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      InvalidFormatException, EndOfFileException,
                      MissingTextureException,
                      JFace, VisGroup, Brush, Entity, JGroup)
+from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
 
 
-class JmfReader:
+class JmfReader(BaseReader):
     """Reads a .jmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):

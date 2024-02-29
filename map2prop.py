@@ -15,10 +15,7 @@ from geoutil import (Vector3D, PolyFace, average_normals,
                      average_near_normals, deg2rad)
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
-from formats.obj_reader import ObjReader
-from formats.rmf_reader import RmfReader
-from formats.jmf_reader import JmfReader
-from formats.map_reader import MapReader
+from formats.base_reader import BaseReader
 
 
 logger = get_logger(__name__)
@@ -55,15 +52,19 @@ outputdir = filedir / outputdir
 if not outputdir.is_dir():
     outputdir.mkdir()
 
-
+filereader: BaseReader
 try:
     if extension == '.obj':
+        from formats.obj_reader import ObjReader
         filereader = ObjReader(filepath, outputdir)
     elif extension == '.rmf':
+        from formats.rmf_reader import RmfReader
         filereader = RmfReader(filepath, outputdir)
     elif extension == '.jmf':
+        from formats.jmf_reader import JmfReader
         filereader = JmfReader(filepath, outputdir)
     elif extension == '.map':
+        from formats.map_reader import MapReader
         filereader = MapReader(filepath, outputdir)
     else:
         logger.info(

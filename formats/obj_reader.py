@@ -9,6 +9,7 @@ from pathlib import Path
 from logutil import get_logger, shutdown_logger
 from geoutil import (Vector3D, Vertex, PolyFace,
                      InvalidSolidException, triangulate_face)
+from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
 
 
@@ -33,7 +34,7 @@ def parseCoord(coord: str) -> list:
     return Vector3D(*[float(n) for n in coord])
 
 
-class ObjReader:
+class ObjReader(BaseReader):
     """Reads an .obj format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
