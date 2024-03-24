@@ -68,6 +68,9 @@ goldsrc .smd files for model creation.',
             '-a', '--autocompile', action='store_true',
             help='compile model after conversion')
         general.add_argument(
+            '-t', '--timeout', type=float, default=60.0, metavar='',
+            help='timeout for running studiomdl.exe (default %(default)s)')
+        general.add_argument(
             '-x', '--autoexit', action='store_true',
             help='don\'t ask for input after finish')
 
@@ -171,6 +174,12 @@ goldsrc .smd files for model creation.',
                 or self.config['AppConfig'].getboolean('autocompile', False))
 
     @property
+    def timeout(self) -> float:
+        if self.args.timeout:
+            return self.args.timeout
+        return self.config['AppConfig'].getfloat('timeout', 60.0)
+
+    @property
     def autoexit(self) -> bool:
         return (self.args.autoexit
                 or self.config['AppConfig'].getboolean('autoexit', False))
@@ -197,6 +206,7 @@ goldsrc .smd files for model creation.',
             'studiomdl': (r'%(steam directory)s\steamapps\common'
                           + r'\Sven Co-op SDK\modelling\studiomdl.exe'),
             'autocompile': 'yes',
+            'timeout': 60.0,
             'wad list': ''
         }
         self.config['halflife'] = {
