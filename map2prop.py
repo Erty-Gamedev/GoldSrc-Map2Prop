@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed May 17 12:20:37 2023
+GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files,
+as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that
+can then be compiled into a GoldSrc format studio model
+without the hassle of using an 3D editor.
 
 @author: Erty
 """
@@ -26,8 +29,7 @@ class InvalidFileException(Exception):
     pass
 
 
-def main():
-
+def main() -> None:
     try:
         config.parseargs()
         filename = config.input
@@ -87,8 +89,8 @@ def main():
         logger.error(str(e))
         raise e
 
-    smooth = False
-    smoothing = 0.0
+    smooth: bool = False
+    smoothing: float = 0.0
     if config.smoothing:
         smooth = True
         smoothing = config.smoothing_treshhold
@@ -96,11 +98,11 @@ def main():
     # If set with filename, let it override config
     if match := re.search(r'_smooth\d{0,3}$', filename, re.I):
         smooth = True
-        smoothing = match.group(0)[len('_smooth'):]
-        if smoothing == '':
+        smoothing_fn: str = match.group(0)[len('_smooth'):]
+        if smoothing_fn == '':
             smoothing = 0.0
         else:
-            smoothing = int(smoothing)
+            smoothing = float(smoothing_fn)
 
     if smooth:
         if smoothing > 0.0:
