@@ -5,42 +5,106 @@ Created on Fri Jul  7 20:01:25 2023
 @author: Erty
 """
 
+from typing import Union, List, Dict, Tuple, Optional
 from PIL import Image
 from pathlib import Path
-from geoutil import PolyFace, triangulate_face
+from vector3d import Vector3D
+from geoutil import PolyFace, Vertex, ImageInfo, Texture, triangulate_face
 from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
-                     MissingTextureException,
-                     JFace, VisGroup, Brush, Entity, JGroup)
+                     MissingTextureException)
 from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
+
+
+class JFace:
+    def __init__(
+            self,
+            points: List[Tuple[float, float, float, float, float]],
+            texture: Texture,
+            normal: Vector3D):
+        self.points: List[Tuple[float, float, float]] = []
+        self.texture: Texture = texture
+        self.plane_normal: Vector3D = normal
+
+        self.vertices = []
+
+        for vertex in points:
+            u, v = vertex[3:]
+            vector = vertex[:3]
+            self.vertices.append(Vertex(
+                Vector3D(*vector),
+                Vector3D(u, -v, 0),
+                self.plane_normal
+            ))
+            self.points.append(vector)
+
+
+class MapObject:
+    def __init__(self, colour: tuple):
+        self.colour = colour
+        self.visgroup: Optional[VisGroup] = None
+        self.group: Optional[Group] = None
+
+
+class VisGroup:
+    def __init__(self, id: int, name: str, colour: tuple, visible: bool):
+        self.id = id
+        self.name = name
+        self.colour = colour
+        self.visible = visible
+
+
+class Brush(MapObject):
+    def __init__(self, faces: list, colour: tuple):
+        super().__init__(colour)
+        self.faces = faces
+
+
+class Group(MapObject):
+    def __init__(self, colour: tuple, id: int):
+        super().__init__(colour)
+        self.id = id
+
+
+class Entity:
+    def __init__(self, brushes: list, colour: tuple, classname: str,
+                 flags: int, properties: dict, origin: tuple) -> None:
+        self.colour = colour
+        self.visgroup: Optional[VisGroup] = None
+        self.group: Optional[Group] = None
+        self.brushes = brushes
+        self.classname = classname
+        self.flags = flags
+        self.properties = properties
+        if not brushes:
+            self.origin = origin
 
 
 class JmfReader(BaseReader):
     """Reads a .jmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.filepath = filepath
-        self.visgroups = {}
-        self.entities = []
-        self.brushes = []
-        self.groups = []
-        self.group_parents = {}
-        self.properties = {}
-        self.entity_paths = []
+        self.filepath: Path = filepath
+        self.visgroups: Dict[str, str] = {}
+        self.entities: List[Entity] = []
+        self.brushes: List[Brush] = []
+        self.groups: List[Group] = []
+        self.group_parents: Dict[str, Group] = {}
+        self.properties: Dict[str, str] = {}
 
-        self.allfaces = []
-        self.allvertices = []
-        self.vn_map = {}
-        self.maskedtextures = []
+        self.allfaces: List[PolyFace] = []
+        self.allvertices: List[Vertex] = []
+        self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
+        self.maskedtextures: List[str] = []
 
-        self.checked = []
-        self.textures = {}
-        self.missing_textures = False
+        self.checked: List[str] = []
+        self.textures: Dict[str, ImageInfo] = {}
+        self.missing_textures: bool = False
 
-        self.filedir = self.filepath.parents[0]
+        self.filedir: Path = self.filepath.parents[0]
         self.wadhandler = WadHandler(self.filedir, outputdir)
 
         self.parse()
@@ -114,11 +178,11 @@ class JmfReader(BaseReader):
         read_int(file)  # flags
         read_int(file)  # count
         colour = read_colour_rgba(file)
-        group = JGroup(colour, group_id)
+        group = Group(colour, group_id)
 
         return group, group_parent_id
 
-    def getgroup(self, id: int) -> JGroup:
+    def getgroup(self, id: int) -> Union[Group, None]:
         for group in self.groups:
             if group.id == id:
                 return group
@@ -129,7 +193,7 @@ class JmfReader(BaseReader):
         visgroup_id = read_int(file)
         colour = read_colour_rgba(file)
         visible = read_bool(file)
-        return VisGroup(visgroup_id, name, colour, visible)
+        return VisGroup(visgroup_id, name, colour, bool(visible))
 
     def readcamera(self, file):
         read_vector3D(file)  # eye position
@@ -192,18 +256,18 @@ class JmfReader(BaseReader):
 
         properties = {}
         property_count = read_int(file)
-        for i in range(property_count):
+        for _ in range(property_count):
             prop_n = read_lpstring2(file)
             properties[prop_n] = read_lpstring2(file)
 
         visgroup_ids = []
         visgroup_count = read_int(file)
-        for i in range(visgroup_count):
+        for _ in range(visgroup_count):
             visgroup_ids.append(read_int(file))
 
         brushes = []
         brush_count = read_int(file)
-        for i in range(brush_count):
+        for _ in range(brush_count):
             brushes.append(self.readbrush(file))
 
         entity = Entity(brushes, colour, classname, spawnflags,
@@ -228,7 +292,7 @@ class JmfReader(BaseReader):
         for i in range(faces_count):
             face = self.readface(file)
 
-            if self.wadhandler.skip_face(face):
+            if self.wadhandler.skip_face(face.texture.name):
                 continue
 
             self.addpolyface(face)
@@ -275,54 +339,60 @@ class JmfReader(BaseReader):
         read_vector3D(file)  # texture_uv
 
     def readface(self, file) -> JFace:
-        texture = {}
-
         read_int(file)  # render flags
         vertex_count = read_int(file)
 
-        texture['rightaxis'] = read_vector3D(file)
-        texture['shiftx'] = read_float(file)
-        texture['downaxis'] = read_vector3D(file)
-        texture['shifty'] = read_float(file)
-        texture['scalex'] = read_float(file)
-        texture['scaley'] = read_float(file)
-        texture['angle'] = read_float(file)
+        rightaxis= read_vector3D(file)
+        shiftx = read_float(file)
+        downaxis = read_vector3D(file)
+        shifty = read_float(file)
+        scalex = read_float(file)
+        scaley = read_float(file)
+        angle = read_float(file)
 
         # padding?
         read_int(file)
         file.read(16)
 
-        texture['name'] = read_ntstring(file, 64)
+        name = read_ntstring(file, 64)
 
-        normal = read_vector3D(file)
+        normal = Vector3D(*read_vector3D(file))
 
         read_float(file)
         read_int(file)
 
         # Check if texture exists, or try to extract it if not
-        if texture['name'] not in self.checked:
-            if not self.wadhandler.check_texture(texture['name']):
+        if name not in self.checked:
+            if not self.wadhandler.check_texture(name):
                 self.missing_textures = True
 
             # Make note of masked textures
-            if (texture['name'].startswith('{')
-                    and texture['name'] not in self.maskedtextures):
-                self.maskedtextures.append(texture['name'])
-            self.checked.append(texture['name'])
+            if (name.startswith('{')
+                    and name not in self.maskedtextures):
+                self.maskedtextures.append(name)
+            self.checked.append(name)
 
-        if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.get_texture(texture['name'])
-            texture['width'] = tex_image['width']
-            texture['height'] = tex_image['height']
+        if name.lower() not in self.wadhandler.SKIP_TEXTURES:
+            tex_image: ImageInfo = self.get_texture(name)
+            width = tex_image.width
+            height = tex_image.height
         else:
-            texture['width'] = 16
-            texture['height'] = 16
+            width = 16
+            height = 16
 
-        vertices = []
-        for i in range(vertex_count):
+        texture = Texture(
+            name,
+            rightaxis, shiftx,
+            downaxis, shifty,
+            angle,
+            scalex, scaley,
+            width, height
+        )
+
+        vertices: List[Tuple[float, float, float, float, float]] = []
+        for _ in range(vertex_count):
             vertex = read_vector3D(file)
-            vertex += (read_float(file), read_float(file))
-            vertices.append(vertex)
+            vertices.append(vertex + (read_float(file), read_float(file)))
 
             read_float(file)  # Selection state
 
@@ -339,11 +409,11 @@ class JmfReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture['name'])
+            polyface = PolyFace(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 
-    def get_texture(self, texture: str) -> Image:
+    def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
             texfile = self.filedir / f"{texture}.bmp"
             if not texfile.exists():
@@ -351,8 +421,7 @@ class JmfReader(BaseReader):
                     f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
-                self.textures[texture] = {
-                    'width': imgfile.width,
-                    'height': imgfile.height
-                }
+                self.textures[texture] = ImageInfo(
+                    imgfile.width, imgfile.height
+                )
         return self.textures[texture]

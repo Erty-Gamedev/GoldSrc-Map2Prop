@@ -5,13 +5,14 @@ Created on Wed Jul 19 16:53:01 2023
 @author: Erty
 """
 
+from typing import Union
 from math import sqrt
 
 EPSILON = 1/(2**10)
 
 
 class Vector3D(list):
-    def __init__(self, x, y, z):
+    def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
         super().__init__((x, y, z))
 
     @property
@@ -45,7 +46,7 @@ class Vector3D(list):
             self.x * b[1] - self.y * b[0]
         )
 
-    def eq(self, b):
+    def eq(self, b) -> bool:
         return (
             abs(self.x - b[0]) < EPSILON and
             abs(self.y - b[1]) < EPSILON and

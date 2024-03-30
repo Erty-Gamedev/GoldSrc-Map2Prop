@@ -5,13 +5,15 @@ Created on Fri Jun  9 09:14:51 2023
 @author: Erty
 """
 
+from typing import List, Union, Tuple, Dict
 from PIL import Image
 from pathlib import Path
-from geoutil import PolyFace, triangulate_face
+from geoutil import PolyFace, Vertex, ImageInfo, Texture, triangulate_face
+from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException,
-                     Face, VisGroup, MapObject, Brush, Entity, Group,
+                     Face, VisGroup, Brush, Entity, Group,
                      EntityPath, PathNode)
 from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
@@ -21,24 +23,24 @@ class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.filepath = filepath
-        self.visgroups = {}
-        self.entities = []
-        self.brushes = []
-        self.groups = []
-        self.properties = {}
-        self.entity_paths = []
+        self.filepath: Path = filepath
+        self.visgroups: Dict[str, str] = {}
+        self.entities: List[Entity] = []
+        self.brushes: List[Brush] = []
+        self.groups: List[Group] = []
+        self.properties: Dict[str, str] = {}
+        self.entity_paths: List[EntityPath] = []
 
-        self.allfaces = []
-        self.allvertices = []
-        self.vn_map = {}
-        self.maskedtextures = []
+        self.allfaces: List[PolyFace] = []
+        self.allvertices: List[Vertex] = []
+        self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
+        self.maskedtextures: List[str] = []
 
-        self.checked = []
-        self.textures = {}
-        self.missing_textures = False
+        self.checked: List[str] = []
+        self.textures: Dict[str, ImageInfo] = {}
+        self.missing_textures: bool = False
 
-        self.filedir = self.filepath.parents[0]
+        self.filedir: Path = self.filepath.parents[0]
         self.wadhandler = WadHandler(self.filedir, outputdir)
 
         self.parse()
@@ -89,9 +91,11 @@ class RmfReader(BaseReader):
         visgroup_id = read_int(file)
         visible = read_bool(file)
         file.read(3)  # Padding bytes
-        return VisGroup(visgroup_id, name, colour, visible)
+        return VisGroup(visgroup_id, name, colour, bool(visible))
 
-    def readobject(self, file) -> tuple:
+    def readobject(
+            self, file
+        ) -> Union[Tuple[Brush, int], Tuple[Entity, int], Tuple[Group, int]]:
         typename = read_lpstring(file)
 
         if typename == 'CMapSolid':
@@ -103,17 +107,17 @@ class RmfReader(BaseReader):
         else:
             raise Exception(f"Invalid object type: {typename}")
 
-    def readbrush(self, file) -> Brush:
+    def readbrush(self, file) -> Tuple[Brush, int]:
         visgroup_id = read_int(file)
         colour = read_colour(file)
         file.read(4)  # Padding?
 
         faces = []
         faces_count = read_int(file)
-        for i in range(faces_count):
+        for _ in range(faces_count):
             face = self.readface(file)
 
-            if self.wadhandler.skip_face(face):
+            if self.wadhandler.skip_face(face.texture.name):
                 continue
 
             self.addpolyface(face)
@@ -137,11 +141,11 @@ class RmfReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture['name'])
+            polyface = PolyFace(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 
-    def get_texture(self, texture: str) -> Image:
+    def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
             texfile = self.filedir / f"{texture}.bmp"
             if not texfile.exists():
@@ -149,49 +153,55 @@ class RmfReader(BaseReader):
                     f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
-                self.textures[texture] = {
-                    'width': imgfile.width,
-                    'height': imgfile.height
-                }
+                self.textures[texture] = ImageInfo(
+                    imgfile.width, imgfile.height
+                )
         return self.textures[texture]
 
     def readface(self, file) -> Face:
-        texture = {'name': read_ntstring(file, 256)}
+        name = read_ntstring(file, 260)
 
         # Check if texture exists, or try to extract it if not
-        if texture['name'] not in self.checked:
-            if not self.wadhandler.check_texture(texture['name']):
+        if name not in self.checked:
+            if not self.wadhandler.check_texture(name):
                 self.missing_textures = True
 
             # Make note of masked textures
-            if (texture['name'].startswith('{')
-                    and texture['name'] not in self.maskedtextures):
-                self.maskedtextures.append(texture['name'])
-            self.checked.append(texture['name'])
+            if (name.startswith('{')
+                    and name not in self.maskedtextures):
+                self.maskedtextures.append(name)
+            self.checked.append(name)
 
-        file.read(4)  # Padding? Note: MESS reads these 4 as a float
+        rightaxis = read_vector3D(file)
+        shiftx = read_float(file)
+        downaxis = read_vector3D(file)
+        shifty = read_float(file)
+        angle = read_float(file)
+        scalex = read_float(file)
+        scaley = read_float(file)
 
-        texture['rightaxis'] = read_vector3D(file)
-        texture['shiftx'] = read_float(file)
-        texture['downaxis'] = read_vector3D(file)
-        texture['shifty'] = read_float(file)
-        texture['angle'] = read_float(file)
-        texture['scalex'] = read_float(file)
-        texture['scaley'] = read_float(file)
-
-        if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.get_texture(texture['name'])
-            texture['width'] = tex_image['width']
-            texture['height'] = tex_image['height']
+        if name.lower() not in self.wadhandler.SKIP_TEXTURES:
+            tex_image = self.get_texture(name)
+            width = tex_image.width
+            height = tex_image.height
         else:
-            texture['width'] = 16
-            texture['height'] = 16
+            width = 16
+            height = 16
+
+        texture = Texture(
+            name,
+            rightaxis, shiftx,
+            downaxis, shifty,
+            angle,
+            scalex, scaley,
+            width, height
+        )
 
         file.read(16)  # Padding
 
-        vertices = []
+        vertices: List[Tuple[float, float, float]] = []
         vertex_count = read_int(file)
-        for i in range(vertex_count):
+        for _ in range(vertex_count):
             vertices.append(read_vector3D(file))
         vertices.reverse()
 
@@ -204,7 +214,7 @@ class RmfReader(BaseReader):
 
         return Face(vertices, plane_points, texture)
 
-    def readentity(self, file) -> Entity:
+    def readentity(self, file) -> Tuple[Entity, int]:
         visgroup_id = read_int(file)
         colour = read_colour(file)
 
@@ -234,26 +244,26 @@ class RmfReader(BaseReader):
         return Entity(brushes, colour, classname, flags,
                       properties, origin), visgroup_id
 
-    def readgroup(self, file) -> tuple:
+    def readgroup(self, file) -> Tuple[Group, int]:
         visgroup_id = read_int(file)
         colour = read_colour(file)
         group = Group(colour, [])
 
         object_count = read_int(file)
-        for i in range(object_count):
+        for _ in range(object_count):
+            obj: Union[Brush, Entity, Group]
             obj, _ = self.readobject(file)
             obj.group = group
             group.objects.append(obj)
 
         return group, visgroup_id
 
-    def addobject(self, obj: MapObject):
+    def addobject(self, obj: Union[Brush, Entity, Group]):
         if isinstance(obj, Entity):
             self.entities.append(obj)
         elif isinstance(obj, Brush):
             self.brushes.append(obj)
         elif isinstance(obj, Group):
-            obj.id = len(self.groups)
             self.groups.append(obj)
             for child in obj.objects:
                 self.addobject(child)
@@ -279,6 +289,6 @@ class RmfReader(BaseReader):
         property_count = read_int(file)
         for i in range(property_count):
             p_name = read_lpstring(file)
-            properties[p_name] = read_lpstring()
+            properties[p_name] = read_lpstring(file)
 
         return PathNode(position, index, name_override, properties)

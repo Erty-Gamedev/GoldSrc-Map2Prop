@@ -5,10 +5,11 @@ Created on Fri Jul 21 15:31:22 2023
 @author: Erty
 """
 
+from typing import List, Tuple, Dict, Any
 from PIL import Image
 from pathlib import Path
-from geoutil import (PolyFace, Vertex, Plane, triangulate_face, Vector3D,
-                     intersection_3planes, sort_vertices)
+from geoutil import (PolyFace, Vertex, Plane, Vector3D, Texture, ImageInfo,
+                     triangulate_face, intersection_3planes, sort_vertices)
 from formats import MissingTextureException
 from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
@@ -34,16 +35,16 @@ class Brush:
 
 
 class Face:
-    def __init__(self, points: list, texture: dict, normal: Vector3D):
+    def __init__(self, points: List[Vector3D], texture: Texture, normal: Vector3D):
         self.points = sort_vertices(points, normal)
-        self.texture = texture
+        self.texture: Texture = texture
 
         self.vertices = []
 
-        nu, nv = texture['rightaxis'], texture['downaxis']
-        w, h = texture['width'], texture['height']
-        su, sv = texture['scalex'], texture['scaley']
-        ou, ov = texture['shiftx'], texture['shifty']
+        nu, nv = texture.rightaxis, texture.downaxis
+        w, h = texture.width, texture.height
+        su, sv = texture.scalex, texture.scaley
+        ou, ov = texture.shiftx, texture.shifty
 
         for point in self.points:
             u = (point.dot(nu)/w)/su + ou/w
@@ -73,7 +74,7 @@ class MapReader(BaseReader):
         self.maskedtextures = []
 
         self.checked = []
-        self.textures = {}
+        self.textures: Dict[str, ImageInfo] = {}
         self.missing_textures = False
 
         self.filedir = self.filepath.parents[0]
@@ -123,7 +124,7 @@ class MapReader(BaseReader):
         return Entity(classname, properties, brushes)
 
     def readbrush(self, file) -> Brush:
-        planes = []
+        planes: List[Plane] = []
 
         while line := file.readline().strip():
             if line.startswith('//'):
@@ -139,7 +140,7 @@ class MapReader(BaseReader):
 
         face: Face
         for face in faces:
-            if self.wadhandler.skip_face(face):
+            if self.wadhandler.skip_face(face.texture.name):
                 continue
 
             self.addpolyface(face)
@@ -157,51 +158,50 @@ class MapReader(BaseReader):
         if len(parts) != 31:
             raise Exception(f"Unexpected face data: {line}")
 
-        plane_points = [
+        plane_points: List[Tuple[float, float, float]] = [
             (float(parts[1]), float(parts[2]), float(parts[3])),
             (float(parts[6]), float(parts[7]), float(parts[8])),
             (float(parts[11]), float(parts[12]), float(parts[13]))
         ]
 
-        texture = {
-            'name': parts[15],
-            'rightaxis': Vector3D(
-                float(parts[17]), float(parts[18]), float(parts[19])),
-            'shiftx': float(parts[20]),
-            'downaxis': Vector3D(
-                float(parts[23]), float(parts[24]), float(parts[25])),
-            'shifty': float(parts[26]),
-            'angle': float(parts[28]),
-            'scalex': float(parts[29]),
-            'scaley': float(parts[30]),
-            'width': 16,
-            'height': 16,
-        }
+        name = parts[15]
 
         # Check if texture exists, or try to extract it if not
-        if texture['name'] not in self.checked:
-            if not self.wadhandler.check_texture(texture['name']):
+        if name not in self.checked:
+            if not self.wadhandler.check_texture(name):
                 self.missing_textures = True
 
             # Make note of masked textures
-            if (texture['name'].startswith('{')
-                    and texture['name'] not in self.maskedtextures):
-                self.maskedtextures.append(texture['name'])
-            self.checked.append(texture['name'])
+            if (name.startswith('{')
+                    and name not in self.maskedtextures):
+                self.maskedtextures.append(name)
+            self.checked.append(name)
 
-        if texture['name'].lower() not in self.wadhandler.SKIP_TEXTURES:
-            tex_image = self.get_texture(texture['name'])
-            texture['width'] = tex_image['width']
-            texture['height'] = tex_image['height']
+        if name.lower() not in self.wadhandler.SKIP_TEXTURES:
+            tex_image = self.get_texture(name)
+            width = tex_image.width
+            height = tex_image.height
         else:
-            texture['width'] = 16
-            texture['height'] = 16
+            width = 16
+            height = 16
+
+        texture = Texture(
+            name,
+            (float(parts[17]), float(parts[18]), float(parts[19])),
+            float(parts[20]),
+            (float(parts[23]), float(parts[24]), float(parts[25])),
+            float(parts[26]),
+            float(parts[28]),
+            float(parts[29]),
+            float(parts[30]),
+            width, height
+        )
 
         return Plane(plane_points, texture)
 
-    def faces_from_planes(self, planes: list) -> list:
+    def faces_from_planes(self, planes: List[Plane]) -> list:
         num_planes = len(planes)
-        faces = [{'vertices': []} for n in range(num_planes)]
+        faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
 
         for i in range(num_planes):
             for j in range(i + 1, num_planes):
@@ -248,11 +248,11 @@ class MapReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture['name'])
+            polyface = PolyFace(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 
-    def get_texture(self, texture: str) -> Image:
+    def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
             texfile = self.filedir / f"{texture}.bmp"
             if not texfile.exists():
@@ -260,8 +260,7 @@ class MapReader(BaseReader):
                     f"Could not find texture {texture}")
 
             with Image.open(texfile, 'r') as imgfile:
-                self.textures[texture] = {
-                    'width': imgfile.width,
-                    'height': imgfile.height
-                }
+                self.textures[texture] = ImageInfo(
+                    imgfile.width, imgfile.height
+                )
         return self.textures[texture]

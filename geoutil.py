@@ -5,6 +5,8 @@ Created on Thu May 18 10:38:39 2023
 @author: Erty
 """
 
+from typing import List, Tuple, Union, Literal, Optional
+from dataclasses import dataclass
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
 from triangulate.triangulate import triangulate
@@ -21,10 +23,30 @@ class Vertex:
 
 
 class PolyFace:
-    def __init__(self, vertices: list, texture: str):
-        self.vertices = vertices
-        self.points = [p.v for p in self.vertices]
+    def __init__(self, vertices: List[Vertex], texture: str):
+        self.vertices: List[Vertex] = vertices
+        self.points: List[Vector3D] = [p.v for p in self.vertices]
         self.texture = texture
+
+
+@dataclass
+class ImageInfo:
+    width: int
+    height: int
+
+
+@dataclass
+class Texture:
+    name: str
+    rightaxis: Tuple[float, float, float]
+    shiftx: float
+    downaxis: Tuple[float, float, float]
+    shifty: float
+    angle: float
+    scalex: float
+    scaley: float
+    width: int = 16
+    height: int = 16
 
 
 class HessianPlane:
@@ -52,12 +74,15 @@ class HessianPlane:
 
 
 class Plane(HessianPlane):
-    def __init__(self, plane_points: list, texture: dict = {}):
-        plane_points = [Vector3D(*p) for p in plane_points[:3]]
-        plane_points.reverse()
-        super().__init__(*points_to_plane(*plane_points))
-        self.plane_points = plane_points
-        self.texture = texture
+    def __init__(
+            self,
+            plane_points: Union[List[Tuple[float, float, float]], List[Vector3D]],
+            texture: Optional[Texture] = None):
+        plane_vectors: List[Vector3D] = [Vector3D(*p) for p in plane_points[:3]]
+        plane_vectors.reverse()
+        super().__init__(*points_to_plane(*plane_vectors))
+        self.plane_points = plane_vectors
+        self.texture: Optional[Texture] = texture
 
 
 class InvalidSolidException(Exception):
@@ -100,8 +125,8 @@ def vectors_angle(a: Vector3D, b: Vector3D) -> float:
 
 def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D) -> float:
     """Returns the angle between the segments ab and bc in radians"""
-    vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
-    vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
+    vector_ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
+    vector_bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
     return vectors_angle(vector_ab, vector_bc)
 
 
@@ -166,7 +191,7 @@ def flatten_plane(polygon: list):
     return new_poly
 
 
-def plane_normal(plane_points: tuple) -> Vector3D:
+def plane_normal(plane_points: Union[tuple, list]) -> Vector3D:
     """Returns the normalized normal vector of the plane"""
     return segments_cross(*plane_points).normalized
 
@@ -232,9 +257,15 @@ def average_near_normals(normals: list, threshold: float) -> dict:
     return new_normals
 
 
+def smooth_normals(points: list, threshold: float) -> None:
+    point: Vertex
+    for point in points:
+        pass
+
+
 def intersection_3planes(p1: HessianPlane,
                          p2: HessianPlane,
-                         p3: HessianPlane) -> Vector3D:
+                         p3: HessianPlane) -> Union[Vector3D, Literal[False]]:
     """Returns the intersection of the three planes,
     or false if there is no interesection
     """
@@ -263,8 +294,9 @@ def geometric_center(vertices: list) -> Vector3D:
     return center / len(vertices)
 
 
-def sort_vertices(vertices: list, normal: Vector3D) -> list:
+def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
     """Returns a sorted list of vertices from an unsorted list"""
+    
     center = geometric_center(vertices)
     num_vertices = len(vertices)
 

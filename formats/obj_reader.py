@@ -5,9 +5,10 @@ Created on Tue May 30 10:40:33 2023
 @author: Erty
 """
 
+from typing import List, Dict
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import (Vector3D, Vertex, PolyFace,
+from geoutil import (Vector3D, Vertex, PolyFace, ImageInfo,
                      InvalidSolidException, triangulate_face)
 from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
@@ -29,9 +30,9 @@ poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
 # Note: The above indices are 1-indexed
 
 
-def parseCoord(coord: str) -> list:
-    coord = coord.split(' ')
-    return Vector3D(*[float(n) for n in coord])
+def parseCoord(coord: str) -> Vector3D:
+    coords: List[str] = coord.split(' ')
+    return Vector3D(*[float(n) for n in coords])
 
 
 class ObjReader(BaseReader):
@@ -40,12 +41,12 @@ class ObjReader(BaseReader):
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
 
-        self.vertexcoords = []
-        self.texturecoords = []
-        self.normalcoords = []
+        self.vertexcoords: List[Vector3D] = []
+        self.texturecoords: List[Vector3D] = []
+        self.normalcoords: List[Vector3D] = []
 
-        self.textures = []
-        self.objects = {}
+        self.textures: Dict[str, ImageInfo] = {}
+        self.objects: Dict[str, dict] = {}
         self.maskedtextures = []
         self.allfaces = []
         self.allvertices = []

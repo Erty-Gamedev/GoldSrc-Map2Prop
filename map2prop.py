@@ -14,7 +14,8 @@ import sys
 import subprocess
 from pathlib import Path
 from logutil import get_logger, shutdown_logger
-from geoutil import (Vector3D, PolyFace, average_normals,
+from vector3d import Vector3D
+from geoutil import (PolyFace, average_normals,
                      average_near_normals, deg2rad)
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
@@ -40,7 +41,7 @@ def main() -> None:
                 input(enter_to_exit)
             config.app_exit(2, 'Attempted to run without providing file')
         else:
-            filename = r'test/cratetest.obj'
+            filename = r'test/multipleobjectstest.jmf'
 
     filepath = Path(filename)
     extension = filepath.suffix.lower()
