@@ -9,8 +9,8 @@ from typing import List, OrderedDict, Dict, Union
 from pathlib import Path
 from collections import OrderedDict
 from PIL.Image import Image
-from logging import Logger
-from logutil import get_logger, shutdown_logger
+import logging
+from logutil import shutdown_logger
 from formats.wad3_reader import Wad3Reader
 from configutil import config
 from shutil import copy2
@@ -34,7 +34,7 @@ class WadHandler:
     ]
 
     def __init__(self, filedir: Path, outputdir: Path):
-        self.__logger: Logger = get_logger(__name__)
+        self.__logger = logging.getLogger(__name__)
         self.__filedir: Path = filedir
         self.__outputdir = outputdir
         self.__wad_list: List[Path] = []

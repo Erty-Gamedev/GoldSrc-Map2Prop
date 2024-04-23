@@ -10,7 +10,8 @@ import os
 import sys
 import argparse
 import configparser
-from logutil import get_logger, shutdown_logger
+import logging
+from logutil import shutdown_logger
 from pathlib import Path
 
 
@@ -229,7 +230,7 @@ if getattr(sys, 'frozen', False):
 elif __file__:
     app_dir = os.path.dirname(__file__)
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 try:
     config: ConfigUtil = ConfigUtil(Path(app_dir) / 'config.ini')
 except configparser.DuplicateOptionError as e:

@@ -7,7 +7,8 @@ Created on Tue May 30 10:40:33 2023
 
 from typing import List, Dict
 from pathlib import Path
-from logutil import get_logger, shutdown_logger
+import logging
+from logutil import shutdown_logger
 from geoutil import (Vector3D, Vertex, PolyFace, ImageInfo,
                      InvalidSolidException, triangulate_face)
 from formats.base_reader import BaseReader
@@ -54,7 +55,7 @@ class ObjReader(BaseReader):
         self.checked = []
         self.missing_textures = False
 
-        self.logger = get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.filedir = self.filepath.parents[0]
         self.wadhandler = WadHandler(self.filedir, outputdir)
 

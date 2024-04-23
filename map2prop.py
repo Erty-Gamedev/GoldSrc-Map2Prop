@@ -8,12 +8,14 @@ without the hassle of using an 3D editor.
 @author: Erty
 """
 
+from typing import Final
 import re
 import os
 import sys
 import subprocess
 from pathlib import Path
-from logutil import get_logger, shutdown_logger
+import logging
+from logutil import setup_logger, shutdown_logger
 from vector3d import Vector3D
 from geoutil import (PolyFace, average_normals,
                      average_near_normals, deg2rad)
@@ -23,7 +25,7 @@ from formats.base_reader import BaseReader
 
 
 enter_to_exit = 'Press Enter to exit...'
-running_as_exe = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+running_as_exe: Final[bool] = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
 
 class InvalidFileException(Exception):
@@ -41,7 +43,7 @@ def main() -> None:
                 input(enter_to_exit)
             config.app_exit(2, 'Attempted to run without providing file')
         else:
-            filename = r'test/multipleobjectstest.jmf'
+            filename = r'test/cratetest.obj'
 
     filepath = Path(filename)
     extension = filepath.suffix.lower()
@@ -220,7 +222,10 @@ $sequence "Generated_with_Erty's_Map2Prop" "{filename}"
 
 
 if __name__ == '__main__':
-    logger = get_logger(__name__)
+    setup_logger()
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
     if config is None:
         logger.error('Could not parse config file, exiting...')
         exit(2)
