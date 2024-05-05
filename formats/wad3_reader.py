@@ -31,8 +31,10 @@ class DirEntry:
 
 class TextureEntry:
     def __init__(self, data: bytes):
-        self.name = unpack('<16s', data[0:16])[0].split(
-            b'\x00', 1)[0].decode('ascii')
+        name_bytes: bytes = unpack('<16s', data[0:16])[0]
+        name_bytes = name_bytes.split(b'\x00', 1)[0]
+        
+        self.name = name_bytes.decode('charmap')
         self.width = unpack('<L', data[16:20])[0]
         self.height = unpack('<L', data[20:24])[0]
         self.mipoffset0 = unpack('<L', data[24:28])[0]
