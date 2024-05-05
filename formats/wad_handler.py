@@ -16,6 +16,8 @@ from configutil import config
 from shutil import copy2
 
 
+logger = logging.getLogger(__name__)
+
 class WadHandler:
     WAD_SKIP_LIST = [
         'cached',
@@ -34,7 +36,6 @@ class WadHandler:
     ]
 
     def __init__(self, filedir: Path, outputdir: Path):
-        self.__logger = logging.getLogger(__name__)
         self.__filedir: Path = filedir
         self.__outputdir = outputdir
         self.__wad_list: List[Path] = []
@@ -43,7 +44,7 @@ class WadHandler:
         self.__textures: Dict[str, Image] = {}
 
     def __del__(self):
-        shutdown_logger(self.__logger)
+        shutdown_logger(logger)
 
     def __get_wad_list(self) -> List[Path]:
         if not self.__wad_list:
@@ -85,7 +86,7 @@ class WadHandler:
             reader = self.__get_wad_reader(wad)
             if texture in reader:
                 self.__textures[texture] = reader[texture]
-                self.__logger.info(f"""\
+                logger.info(f"""\
 Extracting {texture} from {reader.file}.""")
                 reader[texture].save(self.__outputdir / texfile)
                 return True
@@ -101,12 +102,12 @@ Extracting {texture} from {reader.file}.""")
             if (self.__filedir / texfile).exists():
                 copy2(self.__filedir / texfile, self.__outputdir / texfile)
             else:
-                self.__logger.info(f"""\
+                logger.info(f"""\
 Texture {texture}.bmp not found in input file's directory. \
 Searching directory for .wad packages...""")
 
                 if (check := self.__check_wads(texture)) is False:
-                    self.__logger.info(f"""\
+                    logger.info(f"""\
 Texture {texture} not found in neither input file's directory \
 or any .wad packages within that directory. Please place the .wad package \
 containing the texture in the input file's directory and re-run the \

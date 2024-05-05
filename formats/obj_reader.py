@@ -15,6 +15,8 @@ from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
 
 
+logger = logging.getLogger(__name__)
+
 mtllib_prefix = 'mtllib '
 mtl_prefix = 'newmtl '
 mtl_map_prefix = 'map_Ka '
@@ -55,16 +57,15 @@ class ObjReader(BaseReader):
         self.checked = []
         self.missing_textures = False
 
-        self.logger = logging.getLogger(__name__)
         self.filedir = self.filepath.parents[0]
         self.wadhandler = WadHandler(self.filedir, outputdir)
 
         self.readfile()
 
-        shutdown_logger(self.logger)
+        shutdown_logger(logger)
 
     def __del__(self):
-        shutdown_logger(self.logger)
+        shutdown_logger(logger)
 
     def readfile(self):
         with self.filepath.open('r') as objfile:
@@ -147,7 +148,7 @@ class ObjReader(BaseReader):
                     try:
                         tris = triangulate_face(points)
                     except Exception:
-                        self.logger.exception('Face triangulation failed')
+                        logger.exception('Face triangulation failed')
                         raise
 
                     for tri in tris:
@@ -161,7 +162,7 @@ class ObjReader(BaseReader):
                         try:
                             polyface = PolyFace(face, tex)
                         except InvalidSolidException as ise:
-                            self.logger.error(
+                            logger.exception(
                                 "Object had one or more invalid faces: " +
                                 f"{ise.message}")
                             raise

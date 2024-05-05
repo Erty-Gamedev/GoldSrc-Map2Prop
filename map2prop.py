@@ -45,6 +45,8 @@ def main() -> None:
         else:
             filename = r'test/cratetest.obj'
 
+    logger.info(filename)
+
     filepath = Path(filename)
     extension = filepath.suffix.lower()
 
@@ -86,10 +88,10 @@ def main() -> None:
         logger.info(str(e))
         raise e
     except InvalidFormatException as e:
-        logger.error(str(e))
+        logger.exception(str(e))
         raise e
     except ValueError as e:
-        logger.error(str(e))
+        logger.exception(str(e))
         raise e
 
     smooth: bool = False
@@ -208,7 +210,7 @@ $sequence "Generated_with_Erty's_Map2Prop" "{filename}"
                     Path(f"{filename}.qc"),
                 ], check=False, timeout=config.timeout, capture_output=True)
 
-                logger.info(completed_process.stdout.decode('ascii'))
+                logger.info(completed_process.stdout.decode('charmap'))
 
                 if completed_process.returncode == 0:
                     logger.info(
