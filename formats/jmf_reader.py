@@ -15,7 +15,7 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
                      MissingTextureException)
-from formats.base_reader import BaseReader
+from formats.base_classes import BaseReader
 from formats.wad_handler import WadHandler
 
 

@@ -21,7 +21,7 @@ from geoutil import (Polygon, average_normals,
                      average_near_normals, deg2rad)
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
-from formats.base_reader import BaseReader
+from formats.base_classes import BaseReader
 
 
 enter_to_exit = 'Press Enter to exit...'

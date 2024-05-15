@@ -15,7 +15,7 @@ from formats import (read_bool, read_int, read_float, read_ntstring,
                      InvalidFormatException, MissingTextureException,
                      Face, VisGroup, Brush, Entity, Group,
                      EntityPath, PathNode)
-from formats.base_reader import BaseReader
+from formats.base_classes import BaseReader
 from formats.wad_handler import WadHandler
 
 

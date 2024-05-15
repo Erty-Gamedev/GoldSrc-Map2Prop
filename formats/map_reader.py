@@ -11,7 +11,7 @@ from pathlib import Path
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
                      triangulate_face, intersection_3planes, sort_vertices)
 from formats import MissingTextureException
-from formats.base_reader import BaseReader
+from formats.base_classes import BaseReader
 from formats.wad_handler import WadHandler
 
 

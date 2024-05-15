@@ -11,7 +11,7 @@ import logging
 from logutil import shutdown_logger
 from geoutil import (Vector3D, Vertex, Polygon, ImageInfo,
                      InvalidSolidException, triangulate_face)
-from formats.base_reader import BaseReader
+from formats.base_classes import BaseReader
 from formats.wad_handler import WadHandler
 
 
