@@ -17,7 +17,7 @@ from pathlib import Path
 import logging
 from logutil import setup_logger, shutdown_logger
 from vector3d import Vector3D
-from geoutil import (PolyFace, average_normals,
+from geoutil import (Polygon, average_normals,
                      average_near_normals, deg2rad)
 from configutil import config
 from formats import InvalidFormatException, MissingTextureException
@@ -141,7 +141,7 @@ end
 triangles
 ''')
 
-        face: PolyFace
+        face: Polygon
         for face in filereader.allfaces:
             output.write(f"{face.texture}.bmp\n")
 

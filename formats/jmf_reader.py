@@ -9,7 +9,7 @@ from typing import Union, List, Dict, Tuple, Optional
 from PIL import Image
 from pathlib import Path
 from vector3d import Vector3D
-from geoutil import PolyFace, Vertex, ImageInfo, Texture, triangulate_face
+from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
 from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
@@ -95,7 +95,7 @@ class JmfReader(BaseReader):
         self.group_parents: Dict[str, Group] = {}
         self.properties: Dict[str, str] = {}
 
-        self.allfaces: List[PolyFace] = []
+        self.allfaces: List[Polygon] = []
         self.allvertices: List[Vertex] = []
         self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
         self.maskedtextures: List[str] = []
@@ -409,7 +409,7 @@ class JmfReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture.name)
+            polyface = Polygon(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 

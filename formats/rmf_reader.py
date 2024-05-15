@@ -8,7 +8,7 @@ Created on Fri Jun  9 09:14:51 2023
 from typing import List, Union, Tuple, Dict
 from PIL import Image
 from pathlib import Path
-from geoutil import PolyFace, Vertex, ImageInfo, Texture, triangulate_face
+from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
@@ -31,7 +31,7 @@ class RmfReader(BaseReader):
         self.properties: Dict[str, str] = {}
         self.entity_paths: List[EntityPath] = []
 
-        self.allfaces: List[PolyFace] = []
+        self.allfaces: List[Polygon] = []
         self.allvertices: List[Vertex] = []
         self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
         self.maskedtextures: List[str] = []
@@ -141,7 +141,7 @@ class RmfReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture.name)
+            polyface = Polygon(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 

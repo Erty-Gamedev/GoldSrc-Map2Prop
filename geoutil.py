@@ -22,11 +22,10 @@ class Vertex:
         self.v, self.t, self.n = v, t, n
 
 
-class PolyFace:
-    def __init__(self, vertices: List[Vertex], texture: str):
-        self.vertices: List[Vertex] = vertices
-        self.points: List[Vector3D] = [p.v for p in self.vertices]
-        self.texture = texture
+@dataclass
+class Polygon:
+    vertices: List[Vertex]
+    texture: str
 
 
 @dataclass
@@ -59,7 +58,7 @@ class HessianPlane:
         plane_point = self.normal * self.d
         return self.normal.dot((point - plane_point))
 
-    def point_relation(self, point: Vector3D) -> int:
+    def point_relation(self, point: Vector3D) -> Literal[-1, 0, 1]:
         """+1 if point is in front, -1 if behind, 0 if on plane"""
         d = self.distance_to_point(point)
         if abs(d) < EPSILON:
@@ -77,12 +76,12 @@ class Plane(HessianPlane):
     def __init__(
             self,
             plane_points: Union[List[Tuple[float, float, float]], List[Vector3D]],
-            texture: Optional[Texture] = None):
+            texture: Texture):
         plane_vectors: List[Vector3D] = [Vector3D(*p) for p in plane_points[:3]]
         plane_vectors.reverse()
         super().__init__(*points_to_plane(*plane_vectors))
         self.plane_points = plane_vectors
-        self.texture: Optional[Texture] = texture
+        self.texture: Texture = texture
 
 
 class InvalidSolidException(Exception):
@@ -206,7 +205,7 @@ def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
 
 
-def triangulate_face(polygon: list) -> list:
+def triangulate_face(polygon: list) -> List[List[Vector3D]]:
     """Returns a list of triangulated polygons from the polygon"""
     tris = []
     try:
@@ -284,7 +283,7 @@ def intersection_3planes(p1: HessianPlane,
     ) / denominator
 
 
-def geometric_center(vertices: list) -> Vector3D:
+def geometric_center(vertices: List[Vector3D]) -> Vector3D:
     """Returns the geometric center of the given vertices"""
     center = Vector3D(0, 0, 0)
 
@@ -302,7 +301,7 @@ def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
 
     for i in range(num_vertices - 2):
         a = (vertices[i] - center).normalized
-        p = Plane([vertices[i], center, center + normal])
+        p = HessianPlane(*points_to_plane(*[vertices[i], center, center + normal]))
 
         angle_smallest = -1
         smallest = -1

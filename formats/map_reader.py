@@ -8,7 +8,7 @@ Created on Fri Jul 21 15:31:22 2023
 from typing import List, Tuple, Dict, Any
 from PIL import Image
 from pathlib import Path
-from geoutil import (PolyFace, Vertex, Plane, Vector3D, Texture, ImageInfo,
+from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
                      triangulate_face, intersection_3planes, sort_vertices)
 from formats import MissingTextureException
 from formats.base_reader import BaseReader
@@ -39,7 +39,7 @@ class Face:
         self.points = sort_vertices(points, normal)
         self.texture: Texture = texture
 
-        self.vertices = []
+        self.vertices: List[Vertex] = []
 
         nu, nv = texture.rightaxis, texture.downaxis
         w, h = texture.width, texture.height
@@ -66,7 +66,6 @@ class MapReader(BaseReader):
         self.entities = []
         self.brushes = []
         self.properties = {}
-        self.entity_paths = []
 
         self.allfaces = []
         self.allvertices = []
@@ -248,7 +247,7 @@ class MapReader(BaseReader):
                         tri_face.append(vertex)
                         break
 
-            polyface = PolyFace(tri_face, face.texture.name)
+            polyface = Polygon(tri_face, face.texture.name)
 
             self.allfaces.append(polyface)
 

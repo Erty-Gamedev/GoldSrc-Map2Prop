@@ -9,7 +9,7 @@ from typing import List, Dict
 from pathlib import Path
 import logging
 from logutil import shutdown_logger
-from geoutil import (Vector3D, Vertex, PolyFace, ImageInfo,
+from geoutil import (Vector3D, Vertex, Polygon, ImageInfo,
                      InvalidSolidException, triangulate_face)
 from formats.base_reader import BaseReader
 from formats.wad_handler import WadHandler
@@ -160,7 +160,7 @@ class ObjReader(BaseReader):
                                     break
 
                         try:
-                            polyface = PolyFace(face, tex)
+                            polyface = Polygon(face, tex)
                         except InvalidSolidException as ise:
                             logger.exception(
                                 "Object had one or more invalid faces: " +
@@ -169,4 +169,4 @@ class ObjReader(BaseReader):
 
                         self.allfaces.append(polyface)
                         (self.objects[current_obj]['groups'][group]['faces']
-                         .append(PolyFace(face, tex)))
+                         .append(Polygon(face, tex)))
