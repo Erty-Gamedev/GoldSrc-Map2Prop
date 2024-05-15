@@ -87,6 +87,13 @@ class TestGeoutil(unittest.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_bounds_from_points(self):
+        expected = (geoutil.Vector3D(-1, -1, 0), geoutil.Vector3D(1, 1, 2))
+        result = geoutil.bounds_from_points(box.values())
+        print(result)
+
+        self.assertEqual(expected, result)
+
     def test_sort_vertices(self):
         expected = [box['C'], box['D'], box['B'], box['A']]
         vertices = [box['A'], box['B'], box['C'], box['D']]

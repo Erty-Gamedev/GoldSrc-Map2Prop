@@ -293,6 +293,28 @@ def geometric_center(vertices: List[Vector3D]) -> Vector3D:
     return center / len(vertices)
 
 
+def bounds_from_points(points: List[Vector3D]) -> Tuple[Vector3D, Vector3D]:
+    min = Vector3D(0, 0, 0)
+    max = Vector3D(0, 0, 0)
+
+    for point in points:
+        if point.x < min.x:
+            min.x = point.x
+        if point.y < min.y:
+            min.y = point.y
+        if point.z < min.z:
+            min.z = point.z
+        
+        if point.x > max.x:
+            max.x = point.x
+        if point.y > max.y:
+            max.y = point.y
+        if point.z > max.z:
+            max.z = point.z
+    
+    return min, max
+
+
 def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
     """Returns a sorted list of vertices from an unsorted list"""
     
