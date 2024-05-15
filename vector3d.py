@@ -1,31 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul 19 16:53:01 2023
-
 @author: Erty
 """
 
-from typing import Union
+from typing import Union, TypeAlias
 from math import sqrt
 
 EPSILON = 1/(2**10)
+Number: TypeAlias = Union[int, float]
 
 
 class Vector3D(list):
-    def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
+    def __init__(self, x: Number, y: Number, z: Number):
         super().__init__((x, y, z))
 
     @property
-    def x(self):
-        return self[0]
+    def x(self): return self[0]
+    @x.setter
+    def x(self, value: Number): self[0] = value
 
     @property
-    def y(self):
-        return self[1]
+    def y(self): return self[1]
+    @y.setter
+    def y(self, value: Number): self[1] = value
 
     @property
-    def z(self):
-        return self[2]
+    def z(self): return self[2]
+    @z.setter
+    def z(self, value: Number): self[2] = value
 
     @property
     def mag(self) -> float:
@@ -62,8 +64,7 @@ class Vector3D(list):
         elif isinstance(b, (Vector3D, list)):
             return Vector3D(self[0] + b[0], self[1] + b[1], self[2] + b[2])
 
-    def __iadd__(self, b):
-        return self.__add__(b)
+    def __iadd__(self, b): return self.__add__(b)
 
     def __sub__(self, b):
         if isinstance(b, (int, float)):
@@ -71,8 +72,7 @@ class Vector3D(list):
         elif isinstance(b, (Vector3D, list)):
             return Vector3D(self[0] - b[0], self[1] - b[1], self[2] - b[2])
 
-    def __isub__(self, b):
-        return self.__sub__(b)
+    def __isub__(self, b): return self.__sub__(b)
 
     def __mul__(self, b):
         if isinstance(b, (int, float)):
@@ -80,8 +80,7 @@ class Vector3D(list):
         elif isinstance(b, (Vector3D, list)):
             return Vector3D(self[0] * b[0], self[1] * b[1], self[2] * b[2])
 
-    def __rmul__(self, b):
-        return self.__mul__(b)
+    def __rmul__(self, b): return self.__mul__(b)
 
     def __truediv__(self, b):
         if isinstance(b, (int, float)):
@@ -89,8 +88,7 @@ class Vector3D(list):
         elif isinstance(b, (Vector3D, list)):
             return Vector3D(self[0] / b[0], self[1] / b[1], self[2] / b[2])
 
-    def __rtruediv__(self, b):
-        return self.__truediv__(b)
+    def __rtruediv__(self, b): return self.__truediv__(b)
 
     def __str__(self):
         return f"[{self.x:f}, {self.y:f}, {self.z:f}]"
@@ -98,10 +96,9 @@ class Vector3D(list):
     def __repr__(self):
         return f"Vector3D({self.x:f}, {self.y:f}, {self.z:f})"
 
-    def __hash__(self):
-        return hash(tuple(self))
+    def __hash__(self): return hash(tuple(self))
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec: str):
         if format_spec.startswith('p'):
             if ':' in format_spec:
                 fspec = format_spec[1:]
