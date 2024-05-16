@@ -345,6 +345,13 @@ def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
     return vertices
 
 
+def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:
+    for plane in planes:
+        if plane.point_relation(vertex) > 0:
+            return True
+    return False
+
+
 def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
     flipped = []
     for polygon in polygons:
