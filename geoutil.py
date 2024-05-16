@@ -343,3 +343,11 @@ def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
         vertices = list(reversed(vertices))
 
     return vertices
+
+
+def flip_normals(polygons: List[Polygon]) -> List[Polygon]:
+    flipped = []
+    for polygon in polygons:
+        vertices = [Vertex(vertex.v, vertex.t, -vertex.n) for vertex in reversed(polygon.vertices)]
+        flipped.append(Polygon(vertices, polygon.texture))
+    return flipped

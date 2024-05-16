@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul  4 19:01:21 2023
-
-@author: Erty
-"""
 
 from typing import List, OrderedDict, Dict, Union
 from pathlib import Path
@@ -32,7 +27,10 @@ class WadHandler:
         'clip', 'clipbevel', 'clipbevelbrush',
         'cliphull1', 'cliphull2', 'cliphull3',
         'contentempty', 'hint', 'noclip', 'null',
-        'skip', 'sky', 'solidhint', 'origin'
+        'skip', 'sky', 'solidhint',
+    ]
+    TOOL_TEXTURES = [
+        'origin', 'contentwater'
     ]
 
     def __init__(self, filedir: Path, outputdir: Path):

@@ -57,6 +57,9 @@ class BaseBrush(ABC):
     def is_origin(self) -> bool: pass
     @property
     @abstractmethod
+    def has_contentwater(self) -> bool: pass
+    @property
+    @abstractmethod
     def bounds(self) -> Tuple[Vector3D, Vector3D]: pass
     @property
     @abstractmethod
