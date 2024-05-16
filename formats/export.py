@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from geoutil import Polygon, Vector3D, flip_normals
+from geoutil import Polygon, Vector3D, flip_faces
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             models[outname].polygons.extend(brush.all_polygons)
 
             if brush.has_contentwater:
-                models[outname].polygons.extend(flip_normals(brush.all_polygons))
+                models[outname].polygons.extend(flip_faces(brush.all_polygons))
     
     return models
 
