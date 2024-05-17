@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 18 10:38:39 2023
+Geometric functions and classes
 
 @author: Erty
 """
 
-from typing import List, Tuple, Union, Literal, Optional
+from typing import List, Tuple, Union, Literal
 from dataclasses import dataclass
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
@@ -17,9 +17,11 @@ DEG2RAD = PI / 180.0
 EPSILON = 1e-10
 
 
+@dataclass
 class Vertex:
-    def __init__(self, v: Vector3D, t: Vector3D, n: Vector3D):
-        self.v, self.t, self.n = v, t, n
+    v: Vector3D
+    t: Vector3D
+    n: Vector3D
 
 
 @dataclass
