@@ -9,7 +9,9 @@ Base classes for map file readers and map objects
 from typing import List, Dict, Tuple, Sequence
 from abc import ABC, abstractmethod
 from pathlib import Path
-from geoutil import (Polygon, Vertex, Vector3D, Texture)
+from geoutil import (Polygon, Vertex, Vector3D, Texture,
+                     bounds_from_points, geometric_center)
+from formats.wad_handler import WadHandler
 
 
 class BaseFace(ABC):
@@ -32,38 +34,48 @@ class BaseFace(ABC):
     @property
     @abstractmethod
     def texture(self) -> Texture: pass
-    @property
-    @abstractmethod
-    def normal(self) -> Vector3D: pass
+    # @property
+    # @abstractmethod
+    # def normal(self) -> Vector3D: pass
     def __repr__(self) -> str: return f"Face({self.texture.name})"
 
 
 class BaseBrush(ABC):
     def __init__(self, faces: Sequence[BaseFace]):
         self._faces = faces
-        self._all_points: List[Vector3D]
-        self._all_polygons: List[Polygon]
+        self._all_points: List[Vector3D] = []
+        self._all_polygons: List[Polygon] = []
+        for face in faces:
+            self._all_points.extend(face.points)
+        self._all_polygons: List[Polygon] = []
+        for face in faces:
+            if face.texture.name.lower() in WadHandler.TOOL_TEXTURES:
+                continue
+            self._all_polygons.extend(face.polygons)
     @property
-    @abstractmethod
-    def faces(self) -> Sequence[BaseFace]: pass
+    def faces(self): return self._faces
     @property
-    @abstractmethod
-    def all_points(self) -> List[Vector3D]: pass
+    def all_points(self): return self._all_points
     @property
-    @abstractmethod
-    def all_polygons(self) -> List[Polygon]: pass
+    def all_polygons(self): return self._all_polygons
     @property
-    @abstractmethod
-    def is_origin(self) -> bool: pass
+    def is_origin(self) -> bool:
+        for face in self.faces:
+            if face.texture.name.lower() != 'origin':
+                return False
+        return True
     @property
-    @abstractmethod
-    def has_contentwater(self) -> bool: pass
+    def has_contentwater(self) -> bool:
+        for face in self.faces:
+            if face.texture.name.lower() == 'contentwater':
+                return True
+        return False
     @property
-    @abstractmethod
-    def bounds(self) -> Tuple[Vector3D, Vector3D]: pass
+    def bounds(self) -> Tuple[Vector3D, Vector3D]:
+        return bounds_from_points(self.all_points)
     @property
-    @abstractmethod
-    def center(self) -> Vector3D: pass
+    def center(self) -> Vector3D:
+        return geometric_center(self.all_points)
     def __repr__(self) -> str: return f"Brush({len(self.faces)} faces)"
 
 
@@ -73,14 +85,11 @@ class BaseEntity(ABC):
         self._properties = properties
         self._brushes = brushes
     @property
-    @abstractmethod
-    def classname(self) -> str: pass
+    def classname(self): return self._classname
     @property
-    @abstractmethod
-    def brushes(self) -> Sequence[BaseBrush]: pass
+    def properties(self): return self._properties
     @property
-    @abstractmethod
-    def properties(self) -> Dict[str, str]: pass
+    def brushes(self): return self._brushes
     def __repr__(self) -> str: return f"Entity({self.classname})"
 
 
@@ -88,9 +97,6 @@ class BaseReader(ABC):
     """Base class for format readers"""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.allfaces: Sequence[BaseFace]
-        self.allvertices: List[Vertex]
-        self.vn_map: Dict[Vector3D, List[Vector3D]]
-        self.maskedtextures: List[str]
+        self.maskedtextures: Sequence[str]
         self.missing_textures: bool
         self.entities: Sequence[BaseEntity]

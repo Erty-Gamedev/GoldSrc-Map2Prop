@@ -39,13 +39,13 @@ class ImageInfo:
 @dataclass
 class Texture:
     name: str
-    rightaxis: Tuple[float, float, float]
-    shiftx: float
-    downaxis: Tuple[float, float, float]
-    shifty: float
-    angle: float
-    scalex: float
-    scaley: float
+    rightaxis: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    shiftx: float = 0.0
+    downaxis: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    shifty: float = 0.0
+    angle: float = 0.0
+    scalex: float = 1.0
+    scaley: float = 1.0
     width: int = 16
     height: int = 16
 
