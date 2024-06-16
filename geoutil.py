@@ -119,6 +119,10 @@ def clip(value, minimum, maximum):
     return min(maximum, max(minimum, value))
 
 
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
 def vectors_angle(a: Vector3D, b: Vector3D) -> float:
     """Returns the angle between two vectors"""
     return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
