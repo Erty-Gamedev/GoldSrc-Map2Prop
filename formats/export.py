@@ -28,8 +28,11 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     n = 0
     for entity in filereader.entities:
         outname = filename
-        if 'classname' in entity.properties and entity.properties['classname'] == 'func_map2prop':
+        own_model = False
+
+        if entity.classname == 'func_map2prop':
             if 'own_model' in entity.properties and entity.properties['own_model'] == '1':
+                own_model = True
                 outname = f"{filename}_{n}"
                 if 'outname' in entity.properties and entity.properties['outname']:
                     outname = f"{entity.properties['outname']}"
@@ -38,23 +41,31 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                         n += 1
         
         scale = config.qc_scale
-        if 'scale' in entity.properties and entity.properties['scale']:
-            scale = float(entity.properties['scale'])
-            if scale == 0.0: scale = 1.0
-        
         rotation = config.qc_rotate
-        if 'angles' in entity.properties:
-            angles = entity.properties['angles'].split(' ')
-            if len(angles) == 3 and angles != ['0', '0', '0']:
-                rotation = (rotation + float(angles[1])) % 360
+        if entity.classname == 'worldspawn' or own_model:
+            if 'scale' in entity.properties and entity.properties['scale']:
+                scale = float(entity.properties['scale'])
+                if scale == 0.0: scale = 1.0
+            
+            if 'angles' in entity.properties:
+                angles = entity.properties['angles'].split(' ')
+                if len(angles) == 3 and angles != ['0', '0', '0']:
+                    rotation = (rotation + float(angles[1])) % 360
 
         if outname not in models:
             models[outname] = RawModel(outname, [], Vector3D(0, 0, 0), scale, rotation)
 
+        origin_found: bool = False
         for brush in entity.brushes:
             # Look for ORIGIN brushes, use first found
             if models[outname].offset == Vector3D(0, 0, 0) and brush.is_origin:
-                models[outname].offset = brush.center
+                if origin_found:
+                    logger.info(f"Multiple ORIGIN brushes found in {entity.classname} "\
+                                f"near {brush.center}")
+                    continue
+                if entity.classname == 'worldspawn' or own_model:
+                    models[outname].offset = brush.center
+                origin_found = True
                 continue  # Don't add brush
 
             models[outname].polygons.extend(brush.all_polygons)
