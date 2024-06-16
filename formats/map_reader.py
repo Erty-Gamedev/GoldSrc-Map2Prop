@@ -58,60 +58,10 @@ class Face(BaseFace):
 
 
 class Brush(BaseBrush):
-    def __init__(self, faces: List[Face]):
-        self._faces: List[Face] = faces
-        self._all_points: List[Vector3D] = []
-        for face in faces:
-            self._all_points.extend(face.points)
-        self._all_polygons: List[Polygon] = []
-        for face in faces:
-            if face.texture.name.lower() in WadHandler.TOOL_TEXTURES:
-                continue
-            self._all_polygons.extend(face.polygons)
-    @property
-    def faces(self) -> List[Face]: return self._faces
-    @property
-    def all_points(self) -> List[Vector3D]: return self._all_points
-    @property
-    def all_polygons(self) -> List[Vertex]: return self._all_polygons
-
-    @property
-    def is_origin(self) -> bool:
-        for face in self.faces:
-            if face.texture.name.lower() != 'origin':
-                return False
-        return True
-    
-    @property
-    def has_contentwater(self) -> bool:
-        for face in self.faces:
-            if face.texture.name.lower() == 'contentwater':
-                return True
-        return False
-    
-    def bounds(self) -> Tuple[Vector3D, Vector3D]:
-        return bounds_from_points(self.all_points)
-    
-    @property
-    def center(self) -> Vector3D:
-        return geometric_center(self.all_points)
-
+    pass
 
 class Entity(BaseEntity):
-    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
-        self._classname = classname
-        self._properties = properties
-        self._brushes = brushes
-    
-    @property
-    def classname(self):
-        return self._classname
-    @property
-    def properties(self):
-        return self._properties
-    @property
-    def brushes(self):
-        return self._brushes
+    pass
 
 
 class MapReader(BaseReader):
@@ -125,12 +75,9 @@ class MapReader(BaseReader):
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
         
-        self.allfaces = []
-        self.allvertices = []
-        self.vn_map = {}
         self.maskedtextures = []
         self.missing_textures = False
-        self.entities = []
+        self.entities: List[Entity] = []
 
         self.parse()
 
