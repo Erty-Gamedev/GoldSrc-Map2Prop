@@ -7,7 +7,7 @@ from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
                      triangulate_face, intersection_3planes, sort_vertices,
-                     is_vertex_outside_planes, geometric_center, bounds_from_points)
+                     is_vertex_outside_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
