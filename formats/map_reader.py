@@ -1,61 +1,117 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jul 21 15:31:22 2023
 
-@author: Erty
-"""
-
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Tuple, Any
 from PIL import Image
 from pathlib import Path
+from io import TextIOWrapper
+from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
-                     triangulate_face, intersection_3planes, sort_vertices)
+                     triangulate_face, intersection_3planes, sort_vertices,
+                     is_vertex_outside_planes, geometric_center, bounds_from_points)
 from formats import MissingTextureException
-from formats.base_classes import BaseReader
 from formats.wad_handler import WadHandler
 
 
-def is_vertex_outside(vertex, planes: list) -> bool:
-    for plane in planes:
-        if plane.point_relation(vertex) > 0:
-            return True
-    return False
-
-
-class Entity:
-    def __init__(self, classname: str, properties: dict, brushes: list):
-        self.classname = classname
-        self.properties = properties
-        self.brushes = brushes
-
-
-class Brush:
-    def __init__(self, faces: list):
-        self.faces = faces
-
-
-class Face:
+class Face(BaseFace):
     def __init__(self, points: List[Vector3D], texture: Texture, normal: Vector3D):
-        self.points = sort_vertices(points, normal)
-        self.texture: Texture = texture
-
-        self.vertices: List[Vertex] = []
+        self._points = sort_vertices(points, normal)
+        self._vertices = []
+        self._polygons = []
+        self._texture = texture
+        self._normal = normal
 
         nu, nv = texture.rightaxis, texture.downaxis
         w, h = texture.width, texture.height
         su, sv = texture.scalex, texture.scaley
         ou, ov = texture.shiftx, texture.shifty
 
-        for point in self.points:
+        for point in self._points:
             u = (point.dot(nu)/w)/su + ou/w
             v = (point.dot(nv)/h)/sv + ov/h
 
-            self.vertices.append(Vertex(
+            self._vertices.append(Vertex(
                 point,
                 Vector3D(u, -v, 0),
                 normal
             ))
+        
+        for triangle in triangulate_face(self._points):
+            polygon = []
+            for point in triangle:
+                for vertex in self._vertices:
+                    if point == vertex.v:
+                        polygon.append(vertex)
+                        break
+            self._polygons.append(Polygon(polygon, texture.name))
         # TODO: normalize UV
+
+    @property
+    def points(self): return self._points
+    @property
+    def vertices(self): return self._vertices
+    @property
+    def polygons(self): return self._polygons
+    @property
+    def texture(self): return self._texture
+    @property
+    def normal(self): return self._normal
+
+
+class Brush(BaseBrush):
+    def __init__(self, faces: List[Face]):
+        self._faces: List[Face] = faces
+        self._all_points: List[Vector3D] = []
+        for face in faces:
+            self._all_points.extend(face.points)
+        self._all_polygons: List[Polygon] = []
+        for face in faces:
+            if face.texture.name.lower() in WadHandler.TOOL_TEXTURES:
+                continue
+            self._all_polygons.extend(face.polygons)
+    @property
+    def faces(self) -> List[Face]: return self._faces
+    @property
+    def all_points(self) -> List[Vector3D]: return self._all_points
+    @property
+    def all_polygons(self) -> List[Vertex]: return self._all_polygons
+
+    @property
+    def is_origin(self) -> bool:
+        for face in self.faces:
+            if face.texture.name.lower() != 'origin':
+                return False
+        return True
+    
+    @property
+    def has_contentwater(self) -> bool:
+        for face in self.faces:
+            if face.texture.name.lower() == 'contentwater':
+                return True
+        return False
+    
+    def bounds(self) -> Tuple[Vector3D, Vector3D]:
+        return bounds_from_points(self.all_points)
+    
+    @property
+    def center(self) -> Vector3D:
+        return geometric_center(self.all_points)
+
+
+class Entity(BaseEntity):
+    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+        self._classname = classname
+        self._properties = properties
+        self._brushes = brushes
+    
+    @property
+    def classname(self):
+        return self._classname
+    @property
+    def properties(self):
+        return self._properties
+    @property
+    def brushes(self):
+        return self._brushes
 
 
 class MapReader(BaseReader):
@@ -63,21 +119,18 @@ class MapReader(BaseReader):
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-        self.entities = []
-        self.brushes = []
-        self.properties = {}
-
+        self.filedir = self.filepath.parents[0]
+        self.outputdir = outputdir
+        self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.checked: List[str] = []
+        self.textures: Dict[str, ImageInfo] = {}
+        
         self.allfaces = []
         self.allvertices = []
         self.vn_map = {}
         self.maskedtextures = []
-
-        self.checked = []
-        self.textures: Dict[str, ImageInfo] = {}
         self.missing_textures = False
-
-        self.filedir = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.entities = []
 
         self.parse()
 
@@ -86,17 +139,13 @@ class MapReader(BaseReader):
             while line := file.readline().strip():
                 if line.startswith('{'):
                     entity = self.readentity(file)
+                    self.entities.append(entity)
 
-                    if entity.classname == 'worldspawn':
-                        self.properties = entity.properties
-                        self.brushes = entity.brushes
-                    else:
-                        self.entities.append(entity)
-
-    def readentity(self, file) -> Entity:
+    def readentity(self, file: TextIOWrapper) -> Entity:
         classname = ''
-        properties = {}
-        brushes = []
+        properties: Dict[str, str] = {}
+        brushes: List[Brush] = []
+
         while line := file.readline().strip():
             if line.startswith('//'):  # skip comments
                 continue
@@ -115,14 +164,13 @@ class MapReader(BaseReader):
             elif line.startswith('{'):
                 brush = self.readbrush(file)
                 brushes.append(brush)
-                self.brushes.append(brush)
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected entity data: {line}")
         return Entity(classname, properties, brushes)
 
-    def readbrush(self, file) -> Brush:
+    def readbrush(self, file: TextIOWrapper) -> Brush:
         planes: List[Plane] = []
 
         while line := file.readline().strip():
@@ -137,21 +185,8 @@ class MapReader(BaseReader):
 
         faces = self.faces_from_planes(planes)
 
-        face: Face
-        for face in faces:
-            if self.wadhandler.skip_face(face.texture.name):
-                continue
-
-            self.addpolyface(face)
-            for vertex in face.vertices:
-                if vertex not in self.allvertices:
-                    self.allvertices.append(vertex)
-                    if vertex.v not in self.vn_map:
-                        self.vn_map[vertex.v] = []
-                    self.vn_map[vertex.v].append(vertex.n)
-
         return Brush(faces)
-
+    
     def readplane(self, line: str) -> Plane:
         parts = line.split()
         if len(parts) != 31:
@@ -198,7 +233,7 @@ class MapReader(BaseReader):
 
         return Plane(plane_points, texture)
 
-    def faces_from_planes(self, planes: List[Plane]) -> list:
+    def faces_from_planes(self, planes: List[Plane]) -> List[Face]:
         num_planes = len(planes)
         faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
 
@@ -215,7 +250,7 @@ class MapReader(BaseReader):
                     if vertex is False:
                         continue
 
-                    if is_vertex_outside(vertex, planes):
+                    if is_vertex_outside_planes(vertex, planes):
                         continue
 
                     faces[i]['vertices'].append(vertex)
@@ -230,26 +265,8 @@ class MapReader(BaseReader):
                     faces[j]['normal'] = planes[j].normal
                     faces[k]['normal'] = planes[k].normal
 
-        for f in faces:
-            if len(f['vertices']) < 3:
-                raise Exception('uh oh')
-
-        return [Face(f['vertices'], f['texture'], f['normal']) for f in faces]
-
-    def addpolyface(self, face: Face):
-        tris = triangulate_face(face.points)
-
-        for tri in tris:
-            tri_face = []
-            for p in tri:
-                for vertex in face.vertices:
-                    if p == vertex.v:
-                        tri_face.append(vertex)
-                        break
-
-            polyface = Polygon(tri_face, face.texture.name)
-
-            self.allfaces.append(polyface)
+        return [Face(f['vertices'], f['texture'], f['normal'])
+                for f in faces if not self.wadhandler.skip_face(f['texture'].name)]
 
     def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
