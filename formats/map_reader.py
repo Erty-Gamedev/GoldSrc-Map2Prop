@@ -270,7 +270,7 @@ class MapReader(BaseReader):
 
     def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
-            texfile = self.filedir / f"{texture}.bmp"
+            texfile = self.outputdir / f"{texture}.bmp"
             if not texfile.exists():
                 raise MissingTextureException(
                     f"Could not find texture {texture}")
