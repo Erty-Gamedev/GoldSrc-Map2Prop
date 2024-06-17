@@ -95,9 +95,6 @@ class ObjReader(BaseReader):
         self.texturecoords: List[Vector3D] = []
         self.normalcoords: List[Vector3D] = []
 
-        self.allfaces: List[BaseFace] = []
-        self.allvertices = []
-        self.vn_map = {}
         self.maskedtextures = []
         self.missing_textures = False
         self.entities: List[BaseEntity] = []
@@ -173,13 +170,7 @@ class ObjReader(BaseReader):
                             self.texturecoords[i_t - 1],
                             self.normalcoords[i_n - 1]
                         )
-
-                        if vertex.v not in self.vn_map:
-                            self.vn_map[vertex.v] = []
-                        self.vn_map[vertex.v].append(vertex.n)
-
                         vertices.append(vertex)
-                        self.allvertices.append(vertex)
                         points.append(self.vertexcoords[i_v - 1])
                     
                     objects[current_obj].groups[group].faces.append(
