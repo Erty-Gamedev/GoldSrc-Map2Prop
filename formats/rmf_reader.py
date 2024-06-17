@@ -8,83 +8,146 @@ Created on Fri Jun  9 09:14:51 2023
 from typing import List, Union, Tuple, Dict
 from PIL import Image
 from pathlib import Path
-from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
+from io import TextIOWrapper
+from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException,
-                     Face, VisGroup, Brush, Entity, Group,
-                     EntityPath, PathNode)
-from formats.base_classes import BaseReader
+                     VisGroup, Group, EntityPath, PathNode)
+from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
+
+
+class Face(BaseFace):
+    def __init__(self,
+                 points: List[Tuple[float, float, float]],
+                 plane_points: List[Tuple[float, float, float]],
+                 texture: Texture):
+        self._points = points
+        self._plane_points = [Vector3D(*p) for p in plane_points]
+        self._polygons: List[Polygon] = []
+        self._texture = texture
+        self._vertices: List[Vertex] = []
+        self._normal: Vector3D = plane_normal(self._plane_points)
+
+        for point in self.points:
+            u, v = self.project_uv(Vector3D(*point))
+            self.vertices.append(Vertex(
+                Vector3D(*point),
+                Vector3D(
+                    u / self.texture.width,
+                    v / self.texture.height,
+                    0),
+                self._normal
+            ))
+
+        for triangle in triangulate_face(self.points):
+            polygon = []
+            for point in triangle:
+                for vertex in self.vertices:
+                    if point == vertex.v:
+                        polygon.append(vertex)
+                        break
+            self._polygons.append(Polygon(polygon, self.texture.name))
+
+    @property
+    def normal(self): return self._normal
+
+    def project_uv(self, point: Vector3D):
+        # Get texture plane normal, not face plane normal
+        plane_normal = Vector3D(*self.texture.rightaxis).cross(
+            Vector3D(*self.texture.downaxis))
+
+        projected = point - (point.dot(plane_normal) * plane_normal)
+
+        u = self.texture.shiftx * self.texture.scalex
+        v = -self.texture.shifty * self.texture.scaley
+
+        u += projected.dot(self.texture.rightaxis)
+        v -= projected.dot(self.texture.downaxis)
+
+        # Apply scale:
+        u, v = u / self.texture.scalex, v / self.texture.scaley
+
+        return u, v
+
+class Brush(BaseBrush):
+    pass
+
+class Entity(BaseEntity):
+    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+        self._classname = classname
+        self._properties = properties
+        self._brushes = brushes
+    @property
+    def brushes(self) -> List[Brush]: return self._brushes
 
 
 class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.filepath: Path = filepath
-        self.visgroups: Dict[str, str] = {}
-        self.entities: List[Entity] = []
-        self.brushes: List[Brush] = []
-        self.groups: List[Group] = []
-        self.properties: Dict[str, str] = {}
-        self.entity_paths: List[EntityPath] = []
-
-        self.allfaces: List[Polygon] = []
-        self.allvertices: List[Vertex] = []
-        self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
-        self.maskedtextures: List[str] = []
-
+        self.filepath = filepath
+        self.filedir = self.filepath.parents[0]
+        self.outputdir = outputdir
+        self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
-        self.missing_textures: bool = False
 
-        self.filedir: Path = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.maskedtextures: List[str] = []
+        self.missing_textures: bool = False
+        self.entities: List[Entity] = []
 
         self.parse()
 
     def parse(self):
-        with self.filepath.open('rb') as mapfile:
-            self.version = read_float(mapfile)
+        with self.filepath.open('rb') as file:
+            self.version = read_float(file)
 
-            magic = mapfile.read(3)
+            magic = file.read(3)
             if magic != bytes('RMF', 'ascii'):
                 raise InvalidFormatException(
                     f"{self.filepath} is not a valid RMF file.")
 
-            visgroups_count = read_int(mapfile)
+            visgroups_count = read_int(file)
+            for _ in range(visgroups_count):
+                self.readvisgroup(file)
 
-            for i in range(visgroups_count):
-                visgroup = self.readvisgroup(mapfile)
-                self.visgroups[visgroup.id] = visgroup
+            read_lpstring(file)  # "CMapWorld"
+            file.read(7)  # Padding bytes?
 
-            read_lpstring(mapfile)  # "CMapWorld"
-            mapfile.read(7)  # Padding bytes?
+            objects: List[Union[Brush, Entity, Group]] = []
+            objects_count = read_int(file)
+            for _ in range(objects_count):
+                objects.append(self.readobject(file))
 
-            objects_count = read_int(mapfile)
-            for i in range(objects_count):
-                obj, vis_id = self.readobject(mapfile)
-                if vis_id > 0 and vis_id in self.visgroups:
-                    obj.visgroup = self.visgroups[vis_id]
+            read_lpstring(file)  # "worldspawn"
+            file.read(4)  # Padding?
+
+            spawnflags = read_int(file)
+
+            properties: Dict[str, str] = {}
+            properties_count = read_int(file)
+            for _ in range(properties_count):
+                p_name = read_lpstring(file)
+                properties[p_name] = read_lpstring(file)
+            file.read(12)  # Padding?
+
+            if 'spawnflags' not in properties:
+                properties['spawnflags'] = spawnflags
+
+            self.worldspawn = Entity('worldspawn', properties, [])
+            self.entities = [self.worldspawn]
+
+            for obj in objects:
                 self.addobject(obj)
 
-            read_lpstring(mapfile)  # "worldspawn"
-            mapfile.read(4)  # Padding?
-            self.properties['spawnflags'] = read_int(mapfile)
+            path_count = read_int(file)
+            for _ in range(path_count):
+                self.readpath(file)
 
-            worldspawn_properties_count = read_int(mapfile)
-            for i in range(worldspawn_properties_count):
-                p_name = read_lpstring(mapfile)
-                self.properties[p_name] = read_lpstring(mapfile)
-            mapfile.read(12)  # Padding?
-
-            path_count = read_int(mapfile)
-            for i in range(path_count):
-                self.entity_paths.append(self.readpath(mapfile))
-
-    def readvisgroup(self, file) -> VisGroup:
+    def readvisgroup(self, file: TextIOWrapper) -> VisGroup:
         name = read_ntstring(file, 128)
         colour = read_colour(file)
         file.read(1)  # Padding byte
@@ -93,9 +156,8 @@ class RmfReader(BaseReader):
         file.read(3)  # Padding bytes
         return VisGroup(visgroup_id, name, colour, bool(visible))
 
-    def readobject(
-            self, file
-        ) -> Union[Tuple[Brush, int], Tuple[Entity, int], Tuple[Group, int]]:
+    def readobject(self, file: TextIOWrapper
+        ) -> Union[Brush, Entity, Group]:
         typename = read_lpstring(file)
 
         if typename == 'CMapSolid':
@@ -107,43 +169,19 @@ class RmfReader(BaseReader):
         else:
             raise Exception(f"Invalid object type: {typename}")
 
-    def readbrush(self, file) -> Tuple[Brush, int]:
-        visgroup_id = read_int(file)
-        colour = read_colour(file)
+    def readbrush(self, file: TextIOWrapper) -> Brush:
+        read_int(file)  # Visgroup id
+        read_colour(file)  # Editor colour
         file.read(4)  # Padding?
 
         faces = []
         faces_count = read_int(file)
         for _ in range(faces_count):
             face = self.readface(file)
-
             if self.wadhandler.skip_face(face.texture.name):
                 continue
-
-            self.addpolyface(face)
-            for vertex in face.vertices:
-                if vertex not in self.allvertices:
-                    self.allvertices.append(vertex)
-                    if vertex.v not in self.vn_map:
-                        self.vn_map[vertex.v] = []
-                    self.vn_map[vertex.v].append(vertex.n)
             faces.append(face)
-        return Brush(faces, colour), visgroup_id
-
-    def addpolyface(self, face: Face):
-        tris = triangulate_face(face.points)
-
-        for tri in tris:
-            tri_face = []
-            for p in tri:
-                for vertex in face.vertices:
-                    if p == vertex.v:
-                        tri_face.append(vertex)
-                        break
-
-            polyface = Polygon(tri_face, face.texture.name)
-
-            self.allfaces.append(polyface)
+        return Brush(faces)
 
     def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:
@@ -158,7 +196,7 @@ class RmfReader(BaseReader):
                 )
         return self.textures[texture]
 
-    def readface(self, file) -> Face:
+    def readface(self, file: TextIOWrapper) -> Face:
         name = read_ntstring(file, 260)
 
         # Check if texture exists, or try to extract it if not
@@ -199,11 +237,11 @@ class RmfReader(BaseReader):
 
         file.read(16)  # Padding
 
-        vertices: List[Tuple[float, float, float]] = []
+        points: List[Tuple[float, float, float]] = []
         vertex_count = read_int(file)
         for _ in range(vertex_count):
-            vertices.append(read_vector3D(file))
-        vertices.reverse()
+            points.append(read_vector3D(file))
+        points.reverse()
 
         plane_points = [
             read_vector3D(file),
@@ -212,82 +250,83 @@ class RmfReader(BaseReader):
         ]
         plane_points.reverse()
 
-        return Face(vertices, plane_points, texture)
+        return Face(points, plane_points, texture)
 
-    def readentity(self, file) -> Tuple[Entity, int]:
-        visgroup_id = read_int(file)
-        colour = read_colour(file)
+    def readentity(self, file: TextIOWrapper) -> Entity:
+        read_int(file)  # Visgroup id
+        read_colour(file)  # Editor colour
 
         brushes = []
         brush_count = read_int(file)
-        for i in range(brush_count):
+        for _ in range(brush_count):
             read_lpstring(file)  # "CMapSolid"
-            brush, _ = self.readbrush(file)
+            brush = self.readbrush(file)
             brushes.append(brush)
 
         classname = read_lpstring(file)
         file.read(4)  # Padding?
-        flags = read_int(file)
+        spawnflags = read_int(file)
 
         properties = {}
         property_count = read_int(file)
-        for i in range(property_count):
+        for _ in range(property_count):
             prop_n = read_lpstring(file)
             properties[prop_n] = read_lpstring(file)
 
         file.read(14)  # More padding?
 
-        origin = read_vector3D(file)
+        if 'spawnflags' not in properties:
+            properties['spawnflags'] = spawnflags
+
+        read_vector3D(file)  # Origin for point entities
 
         file.read(4)  # Padding?
 
-        return Entity(brushes, colour, classname, flags,
-                      properties, origin), visgroup_id
+        return Entity(classname, properties, brushes)
 
-    def readgroup(self, file) -> Tuple[Group, int]:
-        visgroup_id = read_int(file)
+    def readgroup(self, file: TextIOWrapper) -> Group:
+        read_int(file)  # Visgroup id
         colour = read_colour(file)
         group = Group(colour, [])
 
         object_count = read_int(file)
         for _ in range(object_count):
             obj: Union[Brush, Entity, Group]
-            obj, _ = self.readobject(file)
+            obj = self.readobject(file)
             obj.group = group
             group.objects.append(obj)
 
-        return group, visgroup_id
+        return group
 
     def addobject(self, obj: Union[Brush, Entity, Group]):
         if isinstance(obj, Entity):
             self.entities.append(obj)
         elif isinstance(obj, Brush):
-            self.brushes.append(obj)
+            self.worldspawn.brushes.append(obj)
         elif isinstance(obj, Group):
-            self.groups.append(obj)
             for child in obj.objects:
                 self.addobject(child)
 
-    def readpath(self, file) -> EntityPath:
+    def readpath(self, file: TextIOWrapper) -> EntityPath:
         name = read_ntstring(file, 128)
         classname = read_ntstring(file, 128)
         pathtype = read_int(file)
 
         nodes = []
         node_count = read_int(file)
-        for i in range(node_count):
+        for _ in range(node_count):
             nodes.append(self.readpathnode(file))
 
         return EntityPath(name, classname, pathtype, nodes)
 
-    def readpathnode(self, file) -> PathNode:
+    def readpathnode(self, file: TextIOWrapper) -> PathNode:
         position = read_vector3D(file)
         index = read_int(file)
         name_override = read_ntstring(file, 128)
 
         properties = {}
         property_count = read_int(file)
-        for i in range(property_count):
+        for _ in range(property_count):
             p_name = read_lpstring(file)
             properties[p_name] = read_lpstring(file)
 
