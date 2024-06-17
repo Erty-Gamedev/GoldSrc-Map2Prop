@@ -23,17 +23,13 @@ class BaseFace(ABC):
         self._normal = normal
 
     @property
-    @abstractmethod
-    def points(self) -> List[Vector3D]: pass
+    def points(self) -> List[Vector3D]: return self._points
     @property
-    @abstractmethod
-    def vertices(self) -> List[Vertex]: pass
+    def vertices(self) -> List[Vertex]: return self._vertices
     @property
-    @abstractmethod
-    def polygons(self) -> List[Polygon]: pass
+    def polygons(self) -> List[Polygon]: return self._polygons
     @property
-    @abstractmethod
-    def texture(self) -> Texture: pass
+    def texture(self) -> Texture: return self._texture
     # @property
     # @abstractmethod
     # def normal(self) -> Vector3D: pass
