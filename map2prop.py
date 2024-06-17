@@ -14,7 +14,7 @@ from pathlib import Path
 import logging
 from logutil import setup_logger, shutdown_logger
 from configutil import config
-from formats import InvalidFormatException, MissingTextureException
+from formats import MissingTextureException
 from formats.base_classes import BaseReader
 from formats.export import process_models
 
@@ -60,40 +60,26 @@ def main() -> None:
         outputdir.mkdir()
 
     filereader: BaseReader
-    try:
-        if extension == '.obj':
-            from formats.obj_reader import ObjReader
-            filereader = ObjReader(filepath, outputdir)
-        elif extension == '.rmf':
-            from formats.rmf_reader import RmfReader
-            filereader = RmfReader(filepath, outputdir)
-        elif extension == '.jmf':
-            from formats.jmf_reader import JmfReader
-            filereader = JmfReader(filepath, outputdir)
-        elif extension == '.map':
-            from formats.map_reader import MapReader
-            filereader = MapReader(filepath, outputdir)
-        else:
-            logger.info(
-                'Invalid file type. Must be .obj, .rmf, or .jmf, but '
-                + f"was {filepath.suffix}")
-            raise InvalidFileException(
-                'File type must be .obj, .rmf, or .jmf!')
-    except MissingTextureException as e:
-        logger.info(str(e))
-        raise e
-    except InvalidFormatException as e:
-        logger.exception(str(e))
-        raise e
-    except ValueError as e:
-        logger.exception(str(e))
-        raise e
+    if extension == '.obj':
+        from formats.obj_reader import ObjReader
+        filereader = ObjReader(filepath, outputdir)
+    elif extension == '.rmf':
+        from formats.rmf_reader import RmfReader
+        filereader = RmfReader(filepath, outputdir)
+    elif extension == '.jmf':
+        from formats.jmf_reader import JmfReader
+        filereader = JmfReader(filepath, outputdir)
+    elif extension == '.map':
+        from formats.map_reader import MapReader
+        filereader = MapReader(filepath, outputdir)
+    else:
+        logger.info(
+            'Invalid file type. Must be .obj, .rmf, or .jmf, but '
+            + f"was {filepath.suffix}")
+        raise InvalidFileException(
+            'File type must be .obj, .rmf, or .jmf!')
     
-    try:
-        process_models(filename, outputdir, filereader)
-    except Exception as e:
-        logger.exception(str(e))
-        raise e
+    process_models(filename, outputdir, filereader)
 
 
 if __name__ == '__main__':
@@ -107,7 +93,10 @@ if __name__ == '__main__':
 
     try:
         main()
+    except MissingTextureException as e:
+        logger.info(str(e))
     except Exception as e:
+        logger.exception(str(e))
         config.app_exit(1, str(e))
     finally:
         if running_as_exe and not config.autoexit:
