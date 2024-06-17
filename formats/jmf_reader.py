@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from typing import Union, List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from PIL import Image
 from pathlib import Path
+from io import TextIOWrapper
+from dataclasses import dataclass
 from vector3d import Vector3D
 from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
 from formats import (read_bool, read_int, read_short, read_float, read_double,
@@ -10,154 +12,119 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
                      MissingTextureException)
-from formats.base_classes import BaseReader
+from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from formats.wad_handler import WadHandler
 
 
-class JFace:
+@dataclass
+class JFaceVertex:
+    vertex: Tuple[float, float, float]
+    u: float
+    v: float
+
+class Face(BaseFace):
     def __init__(
             self,
-            points: List[Tuple[float, float, float, float, float]],
+            points: List[JFaceVertex],
             texture: Texture,
             normal: Vector3D):
-        self.points: List[Tuple[float, float, float]] = []
-        self.texture: Texture = texture
-        self.plane_normal: Vector3D = normal
+        self._points: List[Vector3D] = []
+        self._polygons: List[Polygon] = []
+        self._texture: Texture = texture
+        self._normal: Vector3D = normal
+        self._vertices: List[Vertex] = []
 
-        self.vertices = []
-
-        for vertex in points:
-            u, v = vertex[3:]
-            vector = vertex[:3]
-            self.vertices.append(Vertex(
-                Vector3D(*vector),
-                Vector3D(u, -v, 0),
-                self.plane_normal
+        for point in points:
+            self._vertices.append(Vertex(
+                Vector3D(*point.vertex),
+                Vector3D(point.u, -point.v, 0),
+                self._normal
             ))
-            self.points.append(vector)
+            self._points.append(Vector3D(*point.vertex))
+        
+        for triangle in triangulate_face(self._points):
+            polygon = []
+            for point in triangle:
+                for vertex in self.vertices:
+                    if point == vertex.v:
+                        polygon.append(vertex)
+                        break
+            self._polygons.append(Polygon(polygon, self.texture.name))
 
+class Brush(BaseBrush):
+    pass
 
-class MapObject:
-    def __init__(self, colour: tuple):
-        self.colour = colour
-        self.visgroup: Optional[VisGroup] = None
-        self.group: Optional[Group] = None
-
-
-class VisGroup:
-    def __init__(self, id: int, name: str, colour: tuple, visible: bool):
-        self.id = id
-        self.name = name
-        self.colour = colour
-        self.visible = visible
-
-
-class Brush(MapObject):
-    def __init__(self, faces: list, colour: tuple):
-        super().__init__(colour)
-        self.faces = faces
-
-
-class Group(MapObject):
-    def __init__(self, colour: tuple, id: int):
-        super().__init__(colour)
-        self.id = id
-
-
-class Entity:
-    def __init__(self, brushes: list, colour: tuple, classname: str,
-                 flags: int, properties: dict, origin: tuple) -> None:
-        self.colour = colour
-        self.visgroup: Optional[VisGroup] = None
-        self.group: Optional[Group] = None
-        self.brushes = brushes
-        self.classname = classname
-        self.flags = flags
-        self.properties = properties
-        if not brushes:
-            self.origin = origin
+class Entity(BaseEntity):
+    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+        self._classname = classname
+        self._properties = properties
+        self._brushes = brushes
+    @property
+    def brushes(self) -> List[Brush]: return self._brushes
 
 
 class JmfReader(BaseReader):
     """Reads a .jmf format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.filepath: Path = filepath
-        self.visgroups: Dict[str, str] = {}
-        self.entities: List[Entity] = []
-        self.brushes: List[Brush] = []
-        self.groups: List[Group] = []
-        self.group_parents: Dict[str, Group] = {}
-        self.properties: Dict[str, str] = {}
-
-        self.allfaces: List[Polygon] = []
-        self.allvertices: List[Vertex] = []
-        self.vn_map: Dict[Vector3D, List[Vector3D]] = {}
-        self.maskedtextures: List[str] = []
-
+        self.filepath = filepath
+        self.filedir = self.filepath.parents[0]
+        self.outputdir = outputdir
+        self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
+        
+        self.maskedtextures: List[str] = []
         self.missing_textures: bool = False
-
-        self.filedir: Path = self.filepath.parents[0]
-        self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.entities: List[Entity] = []
 
         self.parse()
 
     def parse(self):
-        with self.filepath.open('rb') as mapfile:
-            magic = mapfile.read(4)
+        with self.filepath.open('rb') as file:
+            magic = file.read(4)
             if magic != bytes('JHMF', 'ascii'):
                 raise InvalidFormatException(
                     f"{self.filepath} is not a valid JMF file.")
 
             # JMF format version.
             # Was 121 before december 2023 update, became 122 after.
-            jmf_version = read_int(mapfile)
+            jmf_version = read_int(file)
 
-            export_path_count = read_int(mapfile)
-            for i in range(export_path_count):
-                read_lpstring2(mapfile)
+            export_path_count = read_int(file)
+            for _ in range(export_path_count):
+                read_lpstring2(file)
 
             if jmf_version >= 122:
-                for i in range(3):
-                    self.readbgimage(mapfile)
+                for _ in range(3):
+                    self.readbgimage(file)
 
-            group_count = read_int(mapfile)
-            for i in range(group_count):
-                group, group_parent_id = self.readgroup(mapfile)
-                if group_parent_id != 0:
-                    self.group_parents[group.id] = group_parent_id
-                self.groups.append(group)
+            group_count = read_int(file)
+            for _ in range(group_count):
+                self.readgroup(file)
 
-            visgroups_count = read_int(mapfile)
-            for i in range(visgroups_count):
-                self.readvisgroup(mapfile)
+            visgroups_count = read_int(file)
+            for _ in range(visgroups_count):
+                self.readvisgroup(file)
 
-            read_vector3D(mapfile)  # Cordon minimum
-            read_vector3D(mapfile)  # Cordon maximum
+            read_vector3D(file)  # Cordon minimum
+            read_vector3D(file)  # Cordon maximum
 
-            camera_count = read_int(mapfile)
-            for i in range(camera_count):
-                self.readcamera(mapfile)
+            camera_count = read_int(file)
+            for _ in range(camera_count):
+                self.readcamera(file)
 
-            path_count = read_int(mapfile)
-            for i in range(path_count):
-                self.readpath(mapfile)
+            path_count = read_int(file)
+            for _ in range(path_count):
+                self.readpath(file)
 
             try:
                 while True:
-                    entity = self.readentity(mapfile)
-                    if entity.classname == 'worldspawn':
-                        self.brushes.extend(entity.brushes)
-
-                        self.properties = entity.properties
-                    else:
-                        self.entities.append(entity)
+                    self.entities.append(self.readentity(file))
             except EndOfFileException:
                 pass
 
-    def readbgimage(self, file):
+    def readbgimage(self, file: TextIOWrapper) -> None:
         read_lpstring2(file)  # Image path
         read_double(file)  # Scale
         read_int(file)  # Luminance
@@ -167,70 +134,60 @@ class JmfReader(BaseReader):
         read_int(file)  # Y offset
         read_int(file)  # Padding?
 
-    def readgroup(self, file) -> tuple:
-        group_id = read_int(file)
-        group_parent_id = read_int(file)
+    def readgroup(self, file: TextIOWrapper) -> None:
+        read_int(file)  # Group id
+        read_int(file)  # Group parent id
         read_int(file)  # flags
         read_int(file)  # count
-        colour = read_colour_rgba(file)
-        group = Group(colour, group_id)
+        read_colour_rgba(file)  # Editor colour
 
-        return group, group_parent_id
+    def readvisgroup(self, file: TextIOWrapper) -> None:
+        read_lpstring2(file)  # Name
+        read_int(file)  # Visgroup id
+        read_colour_rgba(file)  # Editor colour
+        read_bool(file)  # Editor visibility
 
-    def getgroup(self, id: int) -> Union[Group, None]:
-        for group in self.groups:
-            if group.id == id:
-                return group
-        return None
+    def readcamera(self, file: TextIOWrapper) -> None:
+        read_vector3D(file)  # Eye position
+        read_vector3D(file)  # Look target
+        read_int(file)  # Editor flags (bit 0x02 for is selected)
+        read_colour_rgba(file)  # Editor colour
 
-    def readvisgroup(self, file) -> VisGroup:
-        name = read_lpstring2(file)
-        visgroup_id = read_int(file)
-        colour = read_colour_rgba(file)
-        visible = read_bool(file)
-        return VisGroup(visgroup_id, name, colour, bool(visible))
-
-    def readcamera(self, file):
-        read_vector3D(file)  # eye position
-        read_vector3D(file)  # look target
-        read_int(file)  # flags (bit 0x02 for is selected)
-        read_colour_rgba(file)
-
-    def readpath(self, file):
-        read_lpstring2(file)  # classname
-        read_lpstring2(file)  # name
-        read_int(file)  # path type
+    def readpath(self, file: TextIOWrapper) -> None:
+        read_lpstring2(file)  # Classname
+        read_lpstring2(file)  # Name
+        read_int(file)  # Path type
         file.read(4)  # padding?
-        read_colour_rgba(file)  # colour
+        read_colour_rgba(file)  # Editor colour
 
         node_count = read_int(file)
-        for i in range(node_count):
+        for _ in range(node_count):
             self.readpathnode(file)
 
-    def readpathnode(self, file):
-        read_lpstring2(file)  # name override
-        read_lpstring2(file)  # fire on target
-        read_vector3D(file)  # position
+    def readpathnode(self, file: TextIOWrapper) -> None:
+        read_lpstring2(file)  # Name override
+        read_lpstring2(file)  # Fire on target
+        read_vector3D(file)  # Position
 
-        read_angles(file)  # angles
-        read_int(file)  # flags
-        read_colour_rgba(file)  # colour
+        read_angles(file)  # Angles
+        read_int(file)  # Editor flags
+        read_colour_rgba(file)  # Editor colour
 
         property_count = read_int(file)
-        for i in range(property_count):
-            read_lpstring2(file)  # key
-            read_lpstring2(file)  # value
+        for _ in range(property_count):
+            read_lpstring2(file)  # Key
+            read_lpstring2(file)  # Value
 
-    def readentity(self, file) -> Entity:
+    def readentity(self, file: TextIOWrapper) -> Entity:
         classname = read_lpstring2(file)
-        origin = read_vector3D(file)
+        read_vector3D(file)  # Origin for point entities
         read_int(file)  # Jack editor state
-        group_id = read_int(file)
+        read_int(file)  # Group id
         read_int(file)  # root group id
-        colour = read_colour_rgba(file)
+        read_colour_rgba(file)  # Editor colour
 
-        # special attributes, irrelevant for us
-        for i in range(13):
+        # Special attributes, irrelevant for us
+        for _ in range(13):
             read_lpstring2(file)
 
         spawnflags = read_int(file)
@@ -252,64 +209,52 @@ class JmfReader(BaseReader):
         properties = {}
         property_count = read_int(file)
         for _ in range(property_count):
-            prop_n = read_lpstring2(file)
-            properties[prop_n] = read_lpstring2(file)
+            p_name = read_lpstring2(file)
+            properties[p_name] = read_lpstring2(file)
 
-        visgroup_ids = []
+        if 'spawnflags' not in properties:
+            properties['spawnflags'] = spawnflags
+
         visgroup_count = read_int(file)
         for _ in range(visgroup_count):
-            visgroup_ids.append(read_int(file))
+            read_int(file)
 
         brushes = []
         brush_count = read_int(file)
         for _ in range(brush_count):
             brushes.append(self.readbrush(file))
 
-        entity = Entity(brushes, colour, classname, spawnflags,
-                        properties, origin)
-        entity.group = self.getgroup(group_id)
+        return Entity(classname, properties, brushes)
 
-        return entity
-
-    def readbrush(self, file) -> Brush:
+    def readbrush(self, file: TextIOWrapper) -> Brush:
         curves_count = read_int(file)
         read_int(file)  # Jack editor state
-        group_id = read_int(file)
+        read_int(file)  # Group id
         read_int(file)  # root group id
-        colour = read_colour_rgba(file)
+        read_colour_rgba(file)  # Editor colour
 
         visgroup_count = read_int(file)
-        for i in range(visgroup_count):
+        for _ in range(visgroup_count):
             read_int(file)
 
         faces = []
         faces_count = read_int(file)
-        for i in range(faces_count):
+        for _ in range(faces_count):
             face = self.readface(file)
 
             if self.wadhandler.skip_face(face.texture.name):
                 continue
 
-            self.addpolyface(face)
-            for vertex in face.vertices:
-                if vertex not in self.allvertices:
-                    self.allvertices.append(vertex)
-                    if vertex.v not in self.vn_map:
-                        self.vn_map[vertex.v] = []
-                    self.vn_map[vertex.v].append(vertex.n)
             faces.append(face)
 
-        for i in range(curves_count):
+        for _ in range(curves_count):
             self.readcurve(file)
 
-        brush = Brush(faces, colour)
-        brush.group = self.getgroup(group_id)
+        return Brush(faces)
 
-        return Brush(faces, colour)
-
-    def readcurve(self, file) -> None:
-        read_int(file)  # width
-        read_int(file)  # height
+    def readcurve(self, file: TextIOWrapper) -> None:
+        read_int(file)  # Width
+        read_int(file)  # Height
 
         # surface properties
         read_vector3D(file)      # rightaxis
@@ -325,16 +270,16 @@ class JmfReader(BaseReader):
 
         file.read(4)  # unknown
 
-        for i in range(1024):
+        for _ in range(1024):
             self.readcurvepoint(file)
 
-    def readcurvepoint(self, file) -> None:
-        read_vector3D(file)  # position
-        read_vector3D(file)  # normal
-        read_vector3D(file)  # texture_uv
+    def readcurvepoint(self, file: TextIOWrapper) -> None:
+        read_vector3D(file)  # Position
+        read_vector3D(file)  # Normal
+        read_vector3D(file)  # Texture UV
 
-    def readface(self, file) -> JFace:
-        read_int(file)  # render flags
+    def readface(self, file: TextIOWrapper) -> Face:
+        read_int(file)  # Render flags
         vertex_count = read_int(file)
 
         rightaxis= read_vector3D(file)
@@ -345,16 +290,16 @@ class JmfReader(BaseReader):
         scaley = read_float(file)
         angle = read_float(file)
 
-        # padding?
-        read_int(file)
-        file.read(16)
+        read_int(file)  # Texture alignment flag (0x01=world, 0x02=face)
+        file.read(12)  # Padding?
+        read_int(file)  # Content flags for Quake 2 maps
 
         name = read_ntstring(file, 64)
 
         normal = Vector3D(*read_vector3D(file))
 
-        read_float(file)
-        read_int(file)
+        read_float(file)  # Face distance from origin
+        read_int(file)  # Aligned axis (0=X, 1=Y, 2=Z, 3=Unaligned)
 
         # Check if texture exists, or try to extract it if not
         if name not in self.checked:
@@ -384,29 +329,16 @@ class JmfReader(BaseReader):
             width, height
         )
 
-        vertices: List[Tuple[float, float, float, float, float]] = []
+        points: List[JFaceVertex] = []
         for _ in range(vertex_count):
             vertex = read_vector3D(file)
-            vertices.append(vertex + (read_float(file), read_float(file)))
+            u = read_float(file)
+            v = read_float(file)
+            points.append(JFaceVertex(vertex, u, v))
 
             read_float(file)  # Selection state
 
-        return JFace(vertices, texture, normal)
-
-    def addpolyface(self, face: JFace):
-        tris = triangulate_face(face.points)
-
-        for tri in tris:
-            tri_face = []
-            for p in tri:
-                for vertex in face.vertices:
-                    if p == vertex.v:
-                        tri_face.append(vertex)
-                        break
-
-            polyface = Polygon(tri_face, face.texture.name)
-
-            self.allfaces.append(polyface)
+        return Face(points, texture, normal)
 
     def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:

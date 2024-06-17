@@ -28,7 +28,7 @@ class Face(BaseFace):
 
         for point in self.points:
             u, v = self.project_uv(Vector3D(*point))
-            self.vertices.append(Vertex(
+            self._vertices.append(Vertex(
                 Vector3D(*point),
                 Vector3D(
                     u / self.texture.width,
