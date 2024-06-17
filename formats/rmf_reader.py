@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jun  9 09:14:51 2023
-
-@author: Erty
-"""
 
 from typing import List, Union, Tuple, Dict
 from PIL import Image
