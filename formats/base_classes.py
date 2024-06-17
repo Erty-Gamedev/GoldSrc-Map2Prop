@@ -47,11 +47,8 @@ class BaseBrush(ABC):
         self._all_polygons: List[Polygon] = []
         for face in faces:
             self._all_points.extend(face.points)
-        self._all_polygons: List[Polygon] = []
-        for face in faces:
-            if face.texture.name.lower() in WadHandler.TOOL_TEXTURES:
-                continue
-            self._all_polygons.extend(face.polygons)
+            if face.texture.name.lower() not in WadHandler.TOOL_TEXTURES:
+                self._all_polygons.extend(face.polygons)
     @property
     def faces(self): return self._faces
     @property
