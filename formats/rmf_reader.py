@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Union, Tuple, Dict
+from typing import List, Union, Tuple, Dict, Self
 from PIL import Image
 from pathlib import Path
-from io import TextIOWrapper
+from dataclasses import dataclass
+from io import BufferedReader
 from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
-                     InvalidFormatException, MissingTextureException,
-                     VisGroup, Group, EntityPath, PathNode)
+                     InvalidFormatException, MissingTextureException)
 from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
 
@@ -76,7 +76,11 @@ class Entity(BaseEntity):
         self._properties = properties
         self._brushes = brushes
     @property
-    def brushes(self) -> List[Brush]: return self._brushes
+    def brushes(self): return self._brushes
+
+@dataclass
+class Group:
+    children: List[Union[Brush, Entity, Self]]
 
 
 class RmfReader(BaseReader):
@@ -96,7 +100,7 @@ class RmfReader(BaseReader):
 
         self.parse()
 
-    def parse(self):
+    def parse(self) -> None:
         with self.filepath.open('rb') as file:
             self.version = read_float(file)
 
@@ -130,7 +134,7 @@ class RmfReader(BaseReader):
             file.read(12)  # Padding?
 
             if 'spawnflags' not in properties:
-                properties['spawnflags'] = spawnflags
+                properties['spawnflags'] = str(spawnflags)
 
             self.worldspawn = Entity('worldspawn', properties, [])
             self.entities = [self.worldspawn]
@@ -142,16 +146,15 @@ class RmfReader(BaseReader):
             for _ in range(path_count):
                 self.readpath(file)
 
-    def readvisgroup(self, file: TextIOWrapper) -> VisGroup:
-        name = read_ntstring(file, 128)
-        colour = read_colour(file)
+    def readvisgroup(self, file: BufferedReader) -> None:
+        read_ntstring(file, 128)  # Name
+        read_colour(file)  # Editor colour
         file.read(1)  # Padding byte
-        visgroup_id = read_int(file)
-        visible = read_bool(file)
+        read_int(file)  # Visgroup id
+        read_bool(file)  # Editor visibility
         file.read(3)  # Padding bytes
-        return VisGroup(visgroup_id, name, colour, bool(visible))
 
-    def readobject(self, file: TextIOWrapper
+    def readobject(self, file: BufferedReader
         ) -> Union[Brush, Entity, Group]:
         typename = read_lpstring(file)
 
@@ -164,7 +167,7 @@ class RmfReader(BaseReader):
         else:
             raise Exception(f"Invalid object type: {typename}")
 
-    def readbrush(self, file: TextIOWrapper) -> Brush:
+    def readbrush(self, file: BufferedReader) -> Brush:
         read_int(file)  # Visgroup id
         read_colour(file)  # Editor colour
         file.read(4)  # Padding?
@@ -191,7 +194,7 @@ class RmfReader(BaseReader):
                 )
         return self.textures[texture]
 
-    def readface(self, file: TextIOWrapper) -> Face:
+    def readface(self, file: BufferedReader) -> Face:
         name = read_ntstring(file, 260)
 
         # Check if texture exists, or try to extract it if not
@@ -247,7 +250,7 @@ class RmfReader(BaseReader):
 
         return Face(points, plane_points, texture)
 
-    def readentity(self, file: TextIOWrapper) -> Entity:
+    def readentity(self, file: BufferedReader) -> Entity:
         read_int(file)  # Visgroup id
         read_colour(file)  # Editor colour
 
@@ -271,7 +274,7 @@ class RmfReader(BaseReader):
         file.read(14)  # More padding?
 
         if 'spawnflags' not in properties:
-            properties['spawnflags'] = spawnflags
+            properties['spawnflags'] = str(spawnflags)
 
         read_vector3D(file)  # Origin for point entities
 
@@ -279,19 +282,16 @@ class RmfReader(BaseReader):
 
         return Entity(classname, properties, brushes)
 
-    def readgroup(self, file: TextIOWrapper) -> Group:
+    def readgroup(self, file: BufferedReader) -> Group:
         read_int(file)  # Visgroup id
-        colour = read_colour(file)
-        group = Group(colour, [])
+        read_colour(file)  # Editor colour
 
+        children: List[Union[Brush, Entity, Group]] = []
         object_count = read_int(file)
         for _ in range(object_count):
-            obj: Union[Brush, Entity, Group]
-            obj = self.readobject(file)
-            obj.group = group
-            group.objects.append(obj)
+            children.append(self.readobject(file))
 
-        return group
+        return Group(children)
 
     def addobject(self, obj: Union[Brush, Entity, Group]):
         if isinstance(obj, Entity):
@@ -299,30 +299,24 @@ class RmfReader(BaseReader):
         elif isinstance(obj, Brush):
             self.worldspawn.brushes.append(obj)
         elif isinstance(obj, Group):
-            for child in obj.objects:
+            for child in obj.children:
                 self.addobject(child)
 
-    def readpath(self, file: TextIOWrapper) -> EntityPath:
-        name = read_ntstring(file, 128)
-        classname = read_ntstring(file, 128)
-        pathtype = read_int(file)
+    def readpath(self, file: BufferedReader) -> None:
+        read_ntstring(file, 128)  # Name
+        read_ntstring(file, 128)  # Classname
+        read_int(file)  # Path type
 
-        nodes = []
         node_count = read_int(file)
         for _ in range(node_count):
-            nodes.append(self.readpathnode(file))
+            self.readpathnode(file)
 
-        return EntityPath(name, classname, pathtype, nodes)
+    def readpathnode(self, file: BufferedReader) -> None:
+        read_vector3D(file)  # Position
+        read_int(file)  # Index in path
+        read_ntstring(file, 128)  # Targetname override
 
-    def readpathnode(self, file: TextIOWrapper) -> PathNode:
-        position = read_vector3D(file)
-        index = read_int(file)
-        name_override = read_ntstring(file, 128)
-
-        properties = {}
         property_count = read_int(file)
         for _ in range(property_count):
-            p_name = read_lpstring(file)
-            properties[p_name] = read_lpstring(file)
-
-        return PathNode(position, index, name_override, properties)
+            read_lpstring(file)  # Key
+            read_lpstring(file)  # Value
