@@ -20,6 +20,7 @@ class RawModel:
     offset: Vector3D
     scale: float
     rotation: float
+    maskedtextures: List[str]
 
 
 def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
@@ -53,7 +54,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                     rotation = (rotation + float(angles[1])) % 360
 
         if outname not in models:
-            models[outname] = RawModel(outname, [], Vector3D(0, 0, 0), scale, rotation)
+            models[outname] = RawModel(outname, [], Vector3D(0, 0, 0), scale, rotation, [])
 
         origin_found: bool = False
         for brush in entity.brushes:
@@ -67,6 +68,11 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                     models[outname].offset = brush.center
                 origin_found = True
                 continue  # Don't add brush
+
+            if brush.maskedtextures:
+                for texture in brush.maskedtextures:
+                    if texture not in models[outname].maskedtextures:
+                        models[outname].maskedtextures.append(texture)
 
             models[outname].polygons.extend(brush.all_polygons)
 
@@ -91,7 +97,7 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
 
     for model in models.values():
         write_smd(model, outputdir, filereader)
-        write_qc(model, outputdir, filereader)
+        write_qc(model, outputdir)
 
         if config.autocompile:
             compile(model, outputdir, filereader)
@@ -135,13 +141,13 @@ triangles
         logger.info(f"Successfully written to {outputdir / f"{model.outname}.smd"}")
     return
 
-def write_qc(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
+def write_qc(model: RawModel, outputdir: Path) -> None:
     with open(outputdir / f"{model.outname}.qc", 'w') as output:
         logger.info('Writing .qc file')
 
         rendermodes = ''
-        if filereader.maskedtextures:
-            for texture in filereader.maskedtextures:
+        if model.maskedtextures:
+            for texture in model.maskedtextures:
                 rendermodes += f"$texrendermode {texture}.bmp masked\n"
 
         if model.offset != Vector3D(0, 0, 0):

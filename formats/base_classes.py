@@ -41,16 +41,23 @@ class BaseBrush(ABC):
         self._faces = faces
         self._all_points: List[Vector3D] = []
         self._all_polygons: List[Polygon] = []
+        self._maskedtextures: List[str] = []
         for face in faces:
             self._all_points.extend(face.points)
-            if face.texture.name.lower() not in WadHandler.TOOL_TEXTURES:
-                self._all_polygons.extend(face.polygons)
+            if face.texture.name.lower() in WadHandler.TOOL_TEXTURES:
+                continue
+            self._all_polygons.extend(face.polygons)
+            if face.texture.name.startswith('{') \
+                and face.texture.name not in self._maskedtextures:
+                self._maskedtextures.append(face.texture.name)
     @property
     def faces(self): return self._faces
     @property
     def all_points(self): return self._all_points
     @property
     def all_polygons(self): return self._all_polygons
+    @property
+    def maskedtextures(self): return self._maskedtextures
     @property
     def is_origin(self) -> bool:
         for face in self.faces:
@@ -90,6 +97,5 @@ class BaseReader(ABC):
     """Base class for format readers"""
 
     def __init__(self, filepath: Path, outputdir: Path):
-        self.maskedtextures: Sequence[str]
         self.missing_textures: bool
         self.entities: Sequence[BaseEntity]
