@@ -171,7 +171,7 @@ $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
     return
 
 
-def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
+def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
     if not config.studiomdl or not config.studiomdl.is_file():
         logger.info(
             'Autocompile enabled, but could not proceed. '
@@ -184,25 +184,30 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
         logger.info('Autocompile enabled, compiling model...')
 
         current_dir = os.path.abspath(os.curdir)
-        os.chdir(outputdir.absolute())
+        os.chdir((Path(current_dir) / outputdir).absolute())
 
+        returncode = 0
         try:
             completed_process = subprocess.run([
                 config.studiomdl,
                 Path(f"{model.outname}.qc"),
-            ], check=False, timeout=config.timeout, capture_output=True)
+            ], check=False, timeout=config.timeout, capture_output=True, encoding='charmap')
 
-            logger.info(completed_process.stdout.decode('charmap'))
+            compile_output = completed_process.stdout
 
-            if completed_process.returncode == 0:
+            returncode = completed_process.returncode
+            if returncode == 0:
+                logger.info(compile_output)
                 logger.info(
                     f"{outputdir / model.outname}.mdl compiled successfully!")
             else:
+                logger.warning(compile_output)
                 logger.info(
                     'Something went wrong. Check the compiler output '
                     + 'above for errors.')
         except Exception:
+            returncode = 1
             logger.exception('Model compilation failed with exception')
             
         os.chdir(current_dir)
-    return
+    return returncode
