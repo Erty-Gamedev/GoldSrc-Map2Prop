@@ -19,7 +19,7 @@ class Face(BaseFace):
                  points: List[Tuple[float, float, float]],
                  plane_points: List[Tuple[float, float, float]],
                  texture: Texture):
-        self._points = points
+        self._points = [Vector3D(*p) for p in points]
         self._plane_points = [Vector3D(*p) for p in plane_points]
         self._polygons: List[Polygon] = []
         self._texture = texture
