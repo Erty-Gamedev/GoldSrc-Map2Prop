@@ -74,8 +74,6 @@ class MapReader(BaseReader):
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
-        
-        self.maskedtextures = []
         self.missing_textures = False
         self.entities: List[Entity] = []
 
@@ -151,11 +149,6 @@ class MapReader(BaseReader):
         if name not in self.checked:
             if not self.wadhandler.check_texture(name):
                 self.missing_textures = True
-
-            # Make note of masked textures
-            if (name.startswith('{')
-                    and name not in self.maskedtextures):
-                self.maskedtextures.append(name)
             self.checked.append(name)
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES:

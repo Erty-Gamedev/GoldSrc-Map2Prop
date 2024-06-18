@@ -18,7 +18,7 @@ mtl_map_prefix: Final[Literal['map_Ka ']] = 'map_Ka '
 object_prefix: Final[Literal['o ']] = 'o '
 group_prefix: Final[Literal['g ']] = 'g '
 smooth_prefix: Final[Literal['s ']] = 's '
-usemtl_prefix: Final[Literal['usermtl ']] = 'usemtl '
+usemtl_prefix: Final[Literal['usemtl ']] = 'usemtl '
 
 vertex_prefix: Final[Literal['v ']] = 'v '           # (x y z)
 texture_coord_prefix: Final[Literal['vt ']] = 'vt '  # (u v w)
@@ -85,20 +85,18 @@ class ObjReader(BaseReader):
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
+        self.missing_textures = False
+        self.entities: List[BaseEntity] = []
 
         self.vertexcoords: List[Vector3D] = []
         self.texturecoords: List[Vector3D] = []
         self.normalcoords: List[Vector3D] = []
 
-        self.maskedtextures = []
-        self.missing_textures = False
-        self.entities: List[BaseEntity] = []
-
         self.objects: Dict[str, ObjObject] = {}
 
         self.parse()
 
-    def parse(self):
+    def parse(self) -> None:
         objects: Dict[str, ObjObject] = {}
 
         with self.filepath.open('r') as objfile:
@@ -142,11 +140,6 @@ class ObjReader(BaseReader):
                     if tex not in self.checked:
                         if not self.wadhandler.check_texture(tex):
                             self.missing_textures = True
-
-                        # Make note of masked textures
-                        if (tex.startswith('{')
-                                and tex not in self.maskedtextures):
-                            self.maskedtextures.append(tex)
                         self.checked.append(tex)
 
                 # Parse faces:

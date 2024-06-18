@@ -3,7 +3,7 @@
 from typing import List, Dict, Tuple
 from PIL import Image
 from pathlib import Path
-from io import TextIOWrapper
+from io import BufferedReader
 from dataclasses import dataclass
 from vector3d import Vector3D
 from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
@@ -25,22 +25,22 @@ class JFaceVertex:
 class Face(BaseFace):
     def __init__(
             self,
-            points: List[JFaceVertex],
+            face_vertices: List[JFaceVertex],
             texture: Texture,
-            normal: Vector3D):
+            normal: Vector3D) -> None:
         self._points: List[Vector3D] = []
         self._polygons: List[Polygon] = []
         self._texture: Texture = texture
         self._normal: Vector3D = normal
         self._vertices: List[Vertex] = []
 
-        for point in points:
+        for face_vertex in face_vertices:
             self._vertices.append(Vertex(
-                Vector3D(*point.vertex),
-                Vector3D(point.u, -point.v, 0),
+                Vector3D(*face_vertex.vertex),
+                Vector3D(face_vertex.u, -face_vertex.v, 0),
                 self._normal
             ))
-            self._points.append(Vector3D(*point.vertex))
+            self._points.append(Vector3D(*face_vertex.vertex))
         
         for triangle in triangulate_face(self._points):
             polygon = []
@@ -60,7 +60,7 @@ class Entity(BaseEntity):
         self._properties = properties
         self._brushes = brushes
     @property
-    def brushes(self) -> List[Brush]: return self._brushes
+    def brushes(self): return self._brushes
 
 
 class JmfReader(BaseReader):
@@ -73,8 +73,6 @@ class JmfReader(BaseReader):
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
-        
-        self.maskedtextures: List[str] = []
         self.missing_textures: bool = False
         self.entities: List[Entity] = []
 
@@ -124,7 +122,7 @@ class JmfReader(BaseReader):
             except EndOfFileException:
                 pass
 
-    def readbgimage(self, file: TextIOWrapper) -> None:
+    def readbgimage(self, file: BufferedReader) -> None:
         read_lpstring2(file)  # Image path
         read_double(file)  # Scale
         read_int(file)  # Luminance
@@ -134,26 +132,26 @@ class JmfReader(BaseReader):
         read_int(file)  # Y offset
         read_int(file)  # Padding?
 
-    def readgroup(self, file: TextIOWrapper) -> None:
+    def readgroup(self, file: BufferedReader) -> None:
         read_int(file)  # Group id
         read_int(file)  # Group parent id
         read_int(file)  # flags
         read_int(file)  # count
         read_colour_rgba(file)  # Editor colour
 
-    def readvisgroup(self, file: TextIOWrapper) -> None:
+    def readvisgroup(self, file: BufferedReader) -> None:
         read_lpstring2(file)  # Name
         read_int(file)  # Visgroup id
         read_colour_rgba(file)  # Editor colour
         read_bool(file)  # Editor visibility
 
-    def readcamera(self, file: TextIOWrapper) -> None:
+    def readcamera(self, file: BufferedReader) -> None:
         read_vector3D(file)  # Eye position
         read_vector3D(file)  # Look target
         read_int(file)  # Editor flags (bit 0x02 for is selected)
         read_colour_rgba(file)  # Editor colour
 
-    def readpath(self, file: TextIOWrapper) -> None:
+    def readpath(self, file: BufferedReader) -> None:
         read_lpstring2(file)  # Classname
         read_lpstring2(file)  # Name
         read_int(file)  # Path type
@@ -164,7 +162,7 @@ class JmfReader(BaseReader):
         for _ in range(node_count):
             self.readpathnode(file)
 
-    def readpathnode(self, file: TextIOWrapper) -> None:
+    def readpathnode(self, file: BufferedReader) -> None:
         read_lpstring2(file)  # Name override
         read_lpstring2(file)  # Fire on target
         read_vector3D(file)  # Position
@@ -178,7 +176,7 @@ class JmfReader(BaseReader):
             read_lpstring2(file)  # Key
             read_lpstring2(file)  # Value
 
-    def readentity(self, file: TextIOWrapper) -> Entity:
+    def readentity(self, file: BufferedReader) -> Entity:
         classname = read_lpstring2(file)
         read_vector3D(file)  # Origin for point entities
         read_int(file)  # Jack editor state
@@ -213,7 +211,7 @@ class JmfReader(BaseReader):
             properties[p_name] = read_lpstring2(file)
 
         if 'spawnflags' not in properties:
-            properties['spawnflags'] = spawnflags
+            properties['spawnflags'] = str(spawnflags)
 
         visgroup_count = read_int(file)
         for _ in range(visgroup_count):
@@ -226,7 +224,7 @@ class JmfReader(BaseReader):
 
         return Entity(classname, properties, brushes)
 
-    def readbrush(self, file: TextIOWrapper) -> Brush:
+    def readbrush(self, file: BufferedReader) -> Brush:
         curves_count = read_int(file)
         read_int(file)  # Jack editor state
         read_int(file)  # Group id
@@ -252,7 +250,7 @@ class JmfReader(BaseReader):
 
         return Brush(faces)
 
-    def readcurve(self, file: TextIOWrapper) -> None:
+    def readcurve(self, file: BufferedReader) -> None:
         read_int(file)  # Width
         read_int(file)  # Height
 
@@ -273,12 +271,12 @@ class JmfReader(BaseReader):
         for _ in range(1024):
             self.readcurvepoint(file)
 
-    def readcurvepoint(self, file: TextIOWrapper) -> None:
+    def readcurvepoint(self, file: BufferedReader) -> None:
         read_vector3D(file)  # Position
         read_vector3D(file)  # Normal
         read_vector3D(file)  # Texture UV
 
-    def readface(self, file: TextIOWrapper) -> Face:
+    def readface(self, file: BufferedReader) -> Face:
         read_int(file)  # Render flags
         vertex_count = read_int(file)
 
@@ -305,11 +303,6 @@ class JmfReader(BaseReader):
         if name not in self.checked:
             if not self.wadhandler.check_texture(name):
                 self.missing_textures = True
-
-            # Make note of masked textures
-            if (name.startswith('{')
-                    and name not in self.maskedtextures):
-                self.maskedtextures.append(name)
             self.checked.append(name)
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES:

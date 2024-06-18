@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Base classes for map file readers and map objects
-
-@author: Erty
 """
 
 
@@ -95,7 +93,6 @@ class BaseEntity(ABC):
 
 class BaseReader(ABC):
     """Base class for format readers"""
-
     def __init__(self, filepath: Path, outputdir: Path):
         self.missing_textures: bool
         self.entities: Sequence[BaseEntity]
