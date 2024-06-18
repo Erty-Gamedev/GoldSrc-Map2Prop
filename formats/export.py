@@ -94,13 +94,24 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
     else:
         logger.info(f"{len(models)} models from {filename} prepared.")
 
-
+    returncodes = 0
+    failed: List[str] = []
     for model in models.values():
         write_smd(model, outputdir, filereader)
         write_qc(model, outputdir)
 
         if config.autocompile:
-            compile(model, outputdir, filereader)
+            if (returncode := compile(model, outputdir, filereader)):
+                failed.append(model.outname)
+            returncodes += returncode
+
+    
+    if config.autocompile:
+        if returncodes == 0:
+            logger.info(f"Successfully compiled {num_models} models!")
+        else:
+            logger.info('Something went wrong during model compilation, check the logs.')
+            logger.info(f"The following models did not compile: {', '.join(failed)}")
 
 
 def write_smd(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
