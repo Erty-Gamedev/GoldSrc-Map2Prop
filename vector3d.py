@@ -14,6 +14,9 @@ class Vector3D(list):
     def __init__(self, x: Number, y: Number, z: Number):
         super().__init__((x, y, z))
 
+    @classmethod
+    def zero(cls): return cls(0, 0, 0)
+
     @property
     def x(self): return self[0]
     @x.setter
