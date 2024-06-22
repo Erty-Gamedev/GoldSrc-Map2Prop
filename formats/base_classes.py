@@ -56,10 +56,9 @@ class BaseBrush(ABC):
     def all_polygons(self): return self._all_polygons
     @property
     def maskedtextures(self): return self._maskedtextures
-    @property
-    def is_origin(self) -> bool:
+    def is_tool_brush(self, tool_texture: str) -> bool:
         for face in self.faces:
-            if face.texture.name.lower() != 'origin':
+            if face.texture.name.lower() != tool_texture:
                 return False
         return True
     @property

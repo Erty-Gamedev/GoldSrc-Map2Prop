@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import os, subprocess
 from pathlib import Path
 import logging
@@ -18,6 +18,8 @@ class RawModel:
     outname: str
     polygons: List[Polygon]
     offset: Vector3D
+    bounds: Tuple[Vector3D, Vector3D]
+    clip: Tuple[Vector3D, Vector3D]
     scale: float
     rotation: float
     maskedtextures: List[str]
@@ -54,12 +56,23 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                     rotation = (rotation + float(angles[1])) % 360
 
         if outname not in models:
-            models[outname] = RawModel(outname, [], Vector3D(0, 0, 0), scale, rotation, [])
+            models[outname] = RawModel(
+                outname=outname,
+                polygons=[],
+                offset=Vector3D.zero(),
+                bounds=(Vector3D.zero(), Vector3D.zero()),
+                clip=(Vector3D.zero(), Vector3D.zero()),
+                scale=scale,
+                rotation=rotation,
+                maskedtextures=[],
+            )
 
         origin_found: bool = False
+        bound_found: bool = False
+        clip_found: bool = False
         for brush in entity.brushes:
             # Look for ORIGIN brushes, use first found
-            if models[outname].offset == Vector3D(0, 0, 0) and brush.is_origin:
+            if models[outname].offset == Vector3D(0, 0, 0) and brush.is_tool_brush('origin'):
                 if origin_found:
                     logger.info(f"Multiple ORIGIN brushes found in {entity.classname} "\
                                 f"near {brush.center}")
@@ -67,6 +80,30 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 if entity.classname == 'worldspawn' or own_model:
                     models[outname].offset = brush.center
                 origin_found = True
+                continue  # Don't add brush
+
+            # Look for BOUNDINGBOX brushes, use first found
+            if models[outname].bounds == (Vector3D.zero(), Vector3D.zero())\
+                and brush.is_tool_brush('boundingbox'):
+                if bound_found:
+                    logger.info(f"Multiple BOUNDINGBOX brushes found in {entity.classname} "\
+                                f"near {brush.center}")
+                    continue
+                if entity.classname == 'worldspawn' or own_model:
+                    models[outname].bounds = brush.bounds
+                bound_found = True
+                continue  # Don't add brush
+
+            # Look for CLIP brushes, use first found
+            if models[outname].clip == (Vector3D.zero(), Vector3D.zero())\
+                and brush.is_tool_brush('clip'):
+                if clip_found:
+                    logger.info(f"Multiple CLIP brushes found in {entity.classname} "\
+                                f"near {brush.center}")
+                    continue
+                if entity.classname == 'worldspawn' or own_model:
+                    models[outname].clip = brush.bounds
+                clip_found = True
                 continue  # Don't add brush
 
             if brush.maskedtextures:
