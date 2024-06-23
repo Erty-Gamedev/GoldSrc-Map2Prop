@@ -28,6 +28,11 @@ class Vertex:
 class Polygon:
     vertices: List[Vertex]
     texture: str
+    flipped: bool = False
+
+    @property
+    def normal(self) -> Vector3D:
+        return plane_normal([v.v for v in self.vertices])
 
 
 @dataclass
@@ -362,5 +367,5 @@ def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
     flipped = []
     for polygon in polygons:
         vertices = [Vertex(vertex.v, vertex.t, -vertex.n) for vertex in reversed(polygon.vertices)]
-        flipped.append(Polygon(vertices, polygon.texture))
+        flipped.append(Polygon(vertices, polygon.texture, True))
     return flipped
