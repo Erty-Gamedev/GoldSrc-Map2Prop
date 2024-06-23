@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from geoutil import Polygon, Vector3D, flip_faces
+from geoutil import Polygon, Vertex, Vector3D, flip_faces, average_normals
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ class RawModel:
     offset: Vector3D
     bounds: Tuple[Vector3D, Vector3D]
     clip: Tuple[Vector3D, Vector3D]
+    smoothing: float
     alwaysmooth: List[Tuple[Vector3D, Vector3D]]
     neversmooth: List[Tuple[Vector3D, Vector3D]]
     scale: float
@@ -60,7 +61,6 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             if 'smoothing' in entity.properties:
                 smoothing = float(entity.properties['smoothing'])
-                if smoothing == 0.0: smoothing = 60.0
 
         if outname not in models:
             models[outname] = RawModel(
@@ -69,6 +69,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 offset=Vector3D.zero(),
                 bounds=(Vector3D.zero(), Vector3D.zero()),
                 clip=(Vector3D.zero(), Vector3D.zero()),
+                smoothing=smoothing,
                 alwaysmooth=(Vector3D.zero(), Vector3D.zero()),
                 neversmooth=(Vector3D.zero(), Vector3D.zero()),
                 scale=scale,
@@ -142,7 +143,53 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     return models
 
 
-def apply_smooth(models: List[RawModel]) -> List[RawModel]:
+def vertex_in_list(vertex: Vertex, vertex_list: List[Vertex]) -> bool:
+    for other in vertex_list:
+        if vertex.v == other:
+            return True
+    return False
+
+
+def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
+    for model in models.values():
+        if model.smoothing == 0.0:
+            continue
+
+        vertices: Dict[Vector3D, List[Vertex]] = {}
+        flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
+        vertex_polygon_map: Dict[Vector3D, List[Polygon]] = {}
+        flipped_vertex_polygon_map: Dict[Vector3D, List[Polygon]] = {}
+        for polygon in model.polygons:
+            if polygon.flipped:
+                vlist = flipped_vertices
+                vpolymap = flipped_vertex_polygon_map
+            else:
+                vlist = vertices
+                vpolymap = vertex_polygon_map
+
+            for vertex in polygon.vertices:
+                if not vertex_in_list(vertex, vlist):
+                    vlist[vertex.v] = [vertex]
+                else:
+                    vlist[vertex.v].append(vertex)
+                if vertex.v not in vpolymap:
+                    vpolymap[vertex.v] = [polygon]
+                    continue
+                if polygon not in vpolymap[vertex.v]:
+                    vpolymap[vertex.v].append(polygon)
+    
+        for vertex, points in vertices.items():
+            normals = {p.normal: p.normal for p in vertex_polygon_map[vertex] if not p.flipped}
+            averaged = average_normals(normals.values())
+            for point in points:
+                point.n = averaged
+    
+        for vertex, points in flipped_vertices.items():
+            normals = {p.normal: p.normal for p in flipped_vertex_polygon_map[vertex] if p.flipped}
+            averaged = average_normals(normals.values())
+            for point in points:
+                point.n = averaged
+
     return models
 
 
