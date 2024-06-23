@@ -20,8 +20,8 @@ class RawModel:
     offset: Vector3D
     bounds: Tuple[Vector3D, Vector3D]
     clip: Tuple[Vector3D, Vector3D]
-    alwaysmooth: Tuple[Vector3D, Vector3D]
-    neversmooth: Tuple[Vector3D, Vector3D]
+    alwaysmooth: List[Tuple[Vector3D, Vector3D]]
+    neversmooth: List[Tuple[Vector3D, Vector3D]]
     scale: float
     rotation: float
     maskedtextures: List[str]
@@ -74,8 +74,6 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         origin_found: bool = False
         bound_found: bool = False
         clip_found: bool = False
-        bevel_found: bool = False
-        bevelclip_found: bool = False
         for brush in entity.brushes:
             # Look for ORIGIN brushes, use first found
             if models[outname].offset == Vector3D(0, 0, 0) and brush.is_tool_brush('origin'):
@@ -112,28 +110,18 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 clip_found = True
                 continue  # Don't add brush
 
-            # Look for BEVEL brushes, use first found
+            # Look for BEVEL brushes
             if models[outname].alwaysmooth == (Vector3D.zero(), Vector3D.zero())\
                 and brush.is_tool_brush('bevel'):
-                if bevel_found:
-                    logger.info(f"Multiple BEVEL brushes found in {entity.classname} "\
-                                f"near {brush.center}")
-                    continue
                 if entity.classname == 'worldspawn' or own_model:
-                    models[outname].alwaysmooth = brush.bounds
-                bevel_found = True
+                    models[outname].alwaysmooth.append(brush.bounds)
                 continue  # Don't add brush
 
-            # Look for BEVELCLIP brushes, use first found
+            # Look for BEVELCLIP brushes
             if models[outname].neversmooth == (Vector3D.zero(), Vector3D.zero())\
                 and brush.is_tool_brush('bevelclip'):
-                if bevelclip_found:
-                    logger.info(f"Multiple BEVELCLIP brushes found in {entity.classname} "\
-                                f"near {brush.center}")
-                    continue
                 if entity.classname == 'worldspawn' or own_model:
-                    models[outname].neversmooth = brush.bounds
-                bevelclip_found = True
+                    models[outname].neversmooth.append(brush.bounds)
                 continue  # Don't add brush
 
             if brush.maskedtextures:
@@ -149,8 +137,13 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     return models
 
 
+def apply_smooth(models: List[RawModel]) -> List[RawModel]:
+    return models
+
+
 def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
     models = prepare_models(filename, filereader)
+    models = apply_smooth(models)
     num_models = len(models)
 
     if not num_models:
