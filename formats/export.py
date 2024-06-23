@@ -47,6 +47,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         
         scale = config.qc_scale
         rotation = config.qc_rotate
+        smoothing = config.smoothing_treshhold
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
                 scale = float(entity.properties['scale'])
@@ -56,6 +57,10 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 angles = entity.properties['angles'].split(' ')
                 if len(angles) == 3 and angles != ['0', '0', '0']:
                     rotation = (rotation + float(angles[1])) % 360
+            
+            if 'smoothing' in entity.properties:
+                smoothing = float(entity.properties['smoothing'])
+                if smoothing == 0.0: smoothing = 60.0
 
         if outname not in models:
             models[outname] = RawModel(
