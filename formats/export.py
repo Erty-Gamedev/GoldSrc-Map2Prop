@@ -188,6 +188,7 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
 def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
     models = prepare_models(filename, filereader)
     models = apply_smooth(models)
+    models = [m for m in models.values() if m.polygons]
     num_models = len(models)
 
     if not num_models:
@@ -200,7 +201,10 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
 
     returncodes = 0
     failed: List[str] = []
-    for model in models.values():
+    for model in models:
+        if not model.polygons:  # Skip empty models, such as empty worldspawns
+            continue
+    
         write_smd(model, outputdir, filereader)
         write_qc(model, outputdir)
 
