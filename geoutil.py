@@ -5,7 +5,7 @@ Geometric functions and classes
 @author: Erty
 """
 
-from typing import List, Tuple, Union, Literal
+from typing import List, Tuple, Union, Literal, Dict
 from dataclasses import dataclass
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
@@ -232,15 +232,15 @@ def triangulate_face(polygon: list) -> List[List[Vector3D]]:
     return tris
 
 
-def sum_vectors(vectors: list) -> Vector3D:
+def sum_vectors(vectors: List[Vector3D]) -> Vector3D:
     return Vector3D(*[sum(v) for v in zip(*vectors)])
 
 
-def average_normals(normals: list) -> Vector3D:
-    return (sum_vectors(normals) / len(normals)).normalized
+def average_vectors(vectors: List[Vector3D]) -> Vector3D:
+    return (sum_vectors(vectors) / len(vectors)).normalized
 
 
-def average_near_normals(normals: list, threshold: float) -> dict:
+def average_near_normals(normals: List[Vector3D], threshold: float) -> Dict[Vector3D, Vector3D]:
     new_normals = {}
 
     i, c = 0, 0
@@ -262,7 +262,7 @@ def average_near_normals(normals: list, threshold: float) -> dict:
             i += 1
             continue
 
-        new_normals[a] = average_normals(near)
+        new_normals[a] = average_vectors(near)
         for n in near:
             new_normals[n] = new_normals[a]
             normals.remove(n)
@@ -272,10 +272,19 @@ def average_near_normals(normals: list, threshold: float) -> dict:
     return new_normals
 
 
-def smooth_normals(points: list, threshold: float) -> None:
-    point: Vertex
-    for point in points:
-        pass
+def smooth_normals(
+        vertices: Dict[Vector3D, List[Vertex]],
+        vertex_polygon_map: Dict[Vector3D, List[Polygon]],
+        threshold: float) -> None:
+    for vertex, points in vertices.items():
+        # Use a dictionary to filter out duplicates
+        normals = {p.normal: p.normal for p in vertex_polygon_map[vertex]}
+        if not len(normals):
+            continue
+        averaged = average_vectors(list(normals.values()))
+        for point in points:
+            if vectors_angle(averaged, point.n) < (threshold):
+                point.n = averaged
 
 
 def intersection_3planes(p1: HessianPlane,
