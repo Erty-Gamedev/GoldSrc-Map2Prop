@@ -14,6 +14,7 @@ from triangulate.triangulate import triangulate
 
 PI = 3.141592653589793116
 DEG2RAD = PI / 180.0
+RAD2DEG = 180.0 / PI
 EPSILON = 1e-10
 
 
@@ -164,6 +165,10 @@ def plane_rotation(normal, d):
 def deg2rad(degrees: float) -> float:
     """Convert degrees to radians"""
     return (degrees * DEG2RAD) % (2 * PI)
+
+def rad2deg(radians: float) -> float:
+    """Converts radians to degrees"""
+    return (radians * RAD2DEG) % 360.0
 
 
 def rotate_2d(vector: tuple, degrees: float) -> tuple:
