@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from geoutil import Polygon, Vertex, Vector3D, flip_faces, average_normals
+from geoutil import Polygon, Vertex, Vector3D, flip_faces, deg2rad, smooth_normals
 
 logger = logging.getLogger(__name__)
 
@@ -178,17 +178,9 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
                 if polygon not in vpolymap[vertex.v]:
                     vpolymap[vertex.v].append(polygon)
     
-        for vertex, points in vertices.items():
-            normals = {p.normal: p.normal for p in vertex_polygon_map[vertex] if not p.flipped}
-            averaged = average_normals(normals.values())
-            for point in points:
-                point.n = averaged
-    
-        for vertex, points in flipped_vertices.items():
-            normals = {p.normal: p.normal for p in flipped_vertex_polygon_map[vertex] if p.flipped}
-            averaged = average_normals(normals.values())
-            for point in points:
-                point.n = averaged
+        angle_threshold = deg2rad(model.smoothing)
+        smooth_normals(vertices, vertex_polygon_map, angle_threshold)
+        smooth_normals(flipped_vertices, flipped_vertex_polygon_map, angle_threshold)
 
     return models
 
