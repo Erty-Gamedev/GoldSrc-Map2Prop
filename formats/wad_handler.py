@@ -23,14 +23,14 @@ class WadHandler:
         'tempdecal',
     ]
     SKIP_TEXTURES = [
-        'aaatrigger', 'bevel', 'black_hidden',
-        'clip', 'clipbevel', 'clipbevelbrush',
+        'aaatrigger', 'black_hidden', 'clipbevelbrush',
         'cliphull1', 'cliphull2', 'cliphull3',
         'contentempty', 'hint', 'noclip', 'null',
         'skip', 'sky', 'solidhint',
     ]
     TOOL_TEXTURES = [
-        'origin', 'contentwater'
+        'bevel', 'boundingbox', 'clipbevel', 'clip',
+        'contentwater', 'origin'
     ]
 
     def __init__(self, filedir: Path, outputdir: Path):
