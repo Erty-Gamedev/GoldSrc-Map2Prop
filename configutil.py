@@ -25,14 +25,14 @@ class ConfigUtil:
         if filepath.exists():
             self.config.read(filepath)
         else:
-            self.__create_default_config()
+            self.create_default_config()
             with filepath.open('w') as configfile:
                 self.config.write(configfile)
 
         self.parser = argparse.ArgumentParser(
             prog='GoldSrc Map2Prop',
-            description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into \
-goldsrc .smd files for model creation.',
+            description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into '\
+                'goldsrc .smd files for model creation.',
             exit_on_error=False
         )
 
@@ -183,8 +183,9 @@ goldsrc .smd files for model creation.',
 
     @property
     def autoexit(self) -> bool:
-        return (self.args.autoexit
-                or self.config['AppConfig'].getboolean('autoexit', False))
+        if self.args and self.args.autoexit:
+            return self.args.autoexit
+        return self.config['AppConfig'].getboolean('autoexit', False)
 
     @property
     def smoothing(self) -> bool:
@@ -197,7 +198,7 @@ goldsrc .smd files for model creation.',
             return self.args.smoothing
         return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
 
-    def __create_default_config(self):
+    def create_default_config(self):
         self.config['AppConfig'] = {
             'smoothing': 'no',
             'smoothing threshold': 60.0,
@@ -208,6 +209,7 @@ goldsrc .smd files for model creation.',
             'studiomdl': (r'%(steam directory)s/steamapps/common'
                           + r'/Sven Co-op SDK/modelling/studiomdl.exe'),
             'autocompile': 'yes',
+            'autoexit': 'no',
             'timeout': 60.0,
             'wad list': ''
         }

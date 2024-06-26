@@ -259,7 +259,7 @@ def average_near_normals(vertices: List[Vertex], threshold: float) -> None:
             if vectors_angle(a.n, b.n) <= threshold:
                 near.append(b)
         
-        average_normal = average_vectors({v.n: v.n for v in near}.values())
+        average_normal = average_vectors(list({v.n: v.n for v in near}.values()))
         for point in near:
             point.n = average_normal
             remaining.remove(point)
@@ -372,7 +372,6 @@ def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
 
 
 def point_in_bounds(point: Vector3D, bounds: Bounds) -> bool:
-    bounds: Tuple[Vector3D, Vector3D]
     bmin, bmax = bounds
     
     return point.x > bmin.x and point.x < bmax.x\
