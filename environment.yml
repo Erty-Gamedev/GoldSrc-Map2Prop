@@ -1,7 +1,0 @@
-name: m2p
-dependencies:
- - python=3.9
- - pip
- - pip:
-   - pyinstaller==5.11
-   - pillow==9.5

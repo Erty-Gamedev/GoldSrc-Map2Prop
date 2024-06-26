@@ -1,52 +1,76 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 30 10:50:51 2023
-
 @author: Erty
 """
 
+from typing import Final, Dict, Any
 import os
 import sys
-import logging
+import logging, logging.config
 from pathlib import Path
 from datetime import datetime
 
 
-def get_logger(log_name: str):
+DEBUG: Final[bool] = bool(os.getenv('DEBUG', ''))
+
+def setup_logger() -> None:
     if getattr(sys, 'frozen', False):
         app_dir = os.path.dirname(sys.executable)
     elif __file__:
         app_dir = os.path.dirname(__file__)
 
-    logdir = Path(app_dir) / 'logs'
-    if not logdir.is_dir():
-        logdir.mkdir()
-
-    logger = logging.getLogger(log_name)
-    logger.setLevel(logging.DEBUG)
-
+    log_dir = Path(app_dir) / 'logs'
     now = datetime.now()
-    filelog = logging.FileHandler(
-        logdir / f"error_{now.strftime('%Y-%m-%d')}.log", delay=True)
-    filelog.setLevel(logging.WARNING)
-    filelog.setFormatter(
-        logging.Formatter('%(asctime)s | %(levelname)-8s : %(message)s')
-    )
+    log_config: Dict[str, Any] = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {
+                "format": "%(levelname)-8s : %(message)s",
+            },
+            "verbose": {
+                "format": "[%(asctime)s]%(levelname)s|%(module)s|line#%(lineno)d| : %(message)s",
+                "datefmt": "%Y-%m-%dT%H:%M:%S",
+            }
+        },
+        "handlers": {
+            "stdout": {
+                "class": "logging.StreamHandler",
+                "level": "INFO",
+                "formatter": "simple",
+                "stream": "ext://sys.stdout",
+            },
+            "file": {
+                "class": "logging.FileHandler",
+                "level": "WARNING",
+                "formatter": "verbose",
+                "filename": str(log_dir / f"error_{now.strftime('%Y-%m-%d')}.log"),
+                "encoding": "utf8",
+                "delay": True,
+            }
+        },
+        "loggers": {
+            "root": {
+                "level": "DEBUG",
+                "handlers": [
+                    "stdout",
+                    "file",
+                ]
+            }
+        }
+    }
 
-    conlog = logging.StreamHandler()
-    conlog.setLevel(logging.INFO)
-    conlog.setFormatter(
-        logging.Formatter('%(levelname)-8s : %(message)s')
-    )
+    if not log_dir.is_dir():
+        log_dir.mkdir()
 
-    logger.addHandler(filelog)
-    logger.addHandler(conlog)
-
-    return logger
+    logging.config.dictConfig(log_config)
+    stdouthandler = logging.getHandlerByName('stdout')
+    if stdouthandler and DEBUG:
+        stdouthandler.setLevel(logging.DEBUG)
 
 
 def shutdown_logger(logger: logging.Logger) -> None:
-    for handler in logger.handlers[:]:
+    for handler in logger.handlers:
         handler.close()
         logger.removeHandler(handler)
     logging.shutdown()
