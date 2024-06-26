@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Jul 19 16:44:40 2023
-
-@author: Erty
-"""
 
 from typing import List, Tuple, Union, Generator
 from vector3d import Vector3D

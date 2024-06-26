@@ -148,7 +148,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     return models
 
 
-def vertex_in_list(vertex: Vertex, vertex_list: List[Vertex]) -> bool:
+def vertex_in_list(vertex: Vertex, vertex_list: Dict[Vector3D, List[Vertex]]) -> bool:
     for other in vertex_list:
         if vertex.v == other:
             return True
@@ -204,7 +204,7 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
 def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
     models = prepare_models(filename, filereader)
     models = apply_smooth(models)
-    models = [m for m in models.values() if m.polygons]
+    processed = [m for m in models.values() if m.polygons]
     num_models = len(models)
 
     if not num_models:
@@ -213,11 +213,11 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
     if num_models == 1:
         logger.info(f"{filename} prepared.")
     else:
-        logger.info(f"{len(models)} models from {filename} prepared.")
+        logger.info(f"{len(processed)} models from {filename} prepared.")
 
     returncodes = 0
     failed: List[str] = []
-    for model in models:
+    for model in processed:
         if not model.polygons:  # Skip empty models, such as empty worldspawns
             continue
     
