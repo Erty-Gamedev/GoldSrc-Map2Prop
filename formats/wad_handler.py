@@ -91,7 +91,7 @@ Extracting {texture} from {reader.file}.""")
         return False
 
     def check_texture(self, texture: str) -> bool:
-        if texture.lower() in self.SKIP_TEXTURES:
+        if texture.lower() in self.SKIP_TEXTURES or texture.lower() in self.TOOL_TEXTURES:
             return True
 
         texfile = f"{texture}.bmp"

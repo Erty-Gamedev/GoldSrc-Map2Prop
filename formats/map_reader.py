@@ -151,7 +151,8 @@ class MapReader(BaseReader):
                 self.missing_textures = True
             self.checked.append(name)
 
-        if name.lower() not in self.wadhandler.SKIP_TEXTURES:
+        if name.lower() not in self.wadhandler.SKIP_TEXTURES\
+            and name.lower() not in self.wadhandler.TOOL_TEXTURES:
             tex_image = self.get_texture(name)
             width = tex_image.width
             height = tex_image.height
