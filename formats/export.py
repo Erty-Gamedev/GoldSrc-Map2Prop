@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from geoutil import Polygon, Vertex, Vector3D, flip_faces, deg2rad, smooth_normals
+from geoutil import (Polygon, Vertex, Vector3D,
+                     flip_faces, deg2rad, smooth_normals, is_point_in_bounds)
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 bounds=(Vector3D.zero(), Vector3D.zero()),
                 clip=(Vector3D.zero(), Vector3D.zero()),
                 smoothing=smoothing,
-                alwaysmooth=(Vector3D.zero(), Vector3D.zero()),
-                neversmooth=(Vector3D.zero(), Vector3D.zero()),
+                alwaysmooth=[],
+                neversmooth=[],
                 scale=scale,
                 rotation=rotation,
                 maskedtextures=[],
@@ -81,6 +82,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         bound_found: bool = False
         clip_found: bool = False
         for brush in entity.brushes:
+            if not brush.all_points:  # Skip empty brushes
+                continue
+
             # Look for ORIGIN brushes, use first found
             if models[outname].offset == Vector3D(0, 0, 0) and brush.is_tool_brush('origin'):
                 if origin_found:
@@ -116,18 +120,16 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 clip_found = True
                 continue  # Don't add brush
 
-            # Look for BEVEL brushes
-            if models[outname].alwaysmooth == (Vector3D.zero(), Vector3D.zero())\
-                and brush.is_tool_brush('bevel'):
-                if entity.classname == 'worldspawn' or own_model:
-                    models[outname].alwaysmooth.append(brush.bounds)
-                continue  # Don't add brush
-
-            # Look for BEVELCLIP brushes
-            if models[outname].neversmooth == (Vector3D.zero(), Vector3D.zero())\
-                and brush.is_tool_brush('bevelclip'):
+            # Look for CLIPBEVEL brushes
+            if brush.is_tool_brush('clipbevel'):
                 if entity.classname == 'worldspawn' or own_model:
                     models[outname].neversmooth.append(brush.bounds)
+                continue  # Don't add brush
+
+            # Look for BEVEL brushes
+            if brush.is_tool_brush('bevel'):
+                if entity.classname == 'worldspawn' or own_model:
+                    models[outname].alwaysmooth.append(brush.bounds)
                 continue  # Don't add brush
 
             if brush.maskedtextures:
@@ -159,6 +161,14 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
         flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
         for polygon in model.polygons:
             for vertex in polygon.vertices:
+                skip = False
+                if model.neversmooth:
+                    for ns in model.neversmooth:
+                        if is_point_in_bounds(vertex.v, ns):
+                            skip = True
+
+                if skip: continue
+
                 if vertex.flipped:
                     vlist = flipped_vertices
                 else:
