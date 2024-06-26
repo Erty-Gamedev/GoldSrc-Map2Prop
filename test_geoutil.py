@@ -83,14 +83,13 @@ class TestGeoutil(unittest.TestCase):
 
     def test_geometric_center(self):
         expected = geoutil.Vector3D(0, 0, 1)
-        result = geoutil.geometric_center(box.values())
+        result = geoutil.geometric_center(list(box.values()))
 
         self.assertEqual(expected, result)
 
     def test_bounds_from_points(self):
         expected = (geoutil.Vector3D(-1, -1, 0), geoutil.Vector3D(1, 1, 2))
-        result = geoutil.bounds_from_points(box.values())
-        print(result)
+        result = geoutil.bounds_from_points(list(box.values()))
 
         self.assertEqual(expected, result)
 
