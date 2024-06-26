@@ -34,9 +34,7 @@ def main() -> None:
     except IndexError:
         if running_as_exe:
             logger.info('Attempted to run without providing file')
-            if not config.autoexit:
-                input(enter_to_exit)
-            config.app_exit(2, 'Attempted to run without providing file')
+            config.app_exit(2)
         else:
             filename = r'test/cratetest.obj'
 
@@ -54,8 +52,6 @@ def main() -> None:
         outputdir = Path('.')
 
     outputdir = filedir / outputdir
-
-    # Create .smd
     if not outputdir.is_dir():
         outputdir.mkdir()
 
