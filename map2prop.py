@@ -86,6 +86,7 @@ if __name__ == '__main__':
     if config is None:
         logger.error('Could not parse config file, exiting...')
         exit(2)
+    autoexit = config.autoexit
 
     try:
         main()
@@ -95,6 +96,6 @@ if __name__ == '__main__':
         logger.exception(str(e))
         config.app_exit(1, str(e))
     finally:
-        if running_as_exe and not config.autoexit:
+        if running_as_exe and not autoexit:
             input(enter_to_exit)
         shutdown_logger(logger)
