@@ -9,7 +9,8 @@ from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
 from geoutil import (Polygon, Vertex, Vector3D,
-                     flip_faces, deg2rad, smooth_normals, is_point_in_bounds)
+                     flip_faces, deg2rad, point_in_bounds,
+                     smooth_near_normals, smooth_all_normals)
 
 logger = logging.getLogger(__name__)
 
@@ -159,20 +160,30 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
 
         vertices: Dict[Vector3D, List[Vertex]] = {}
         flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
+        always_smooth: Dict[Vector3D, List[Vertex]] = {}
+        flipped_always_smooth: Dict[Vector3D, List[Vertex]] = {}
         for polygon in model.polygons:
             for vertex in polygon.vertices:
                 skip = False
                 if model.neversmooth:
-                    for ns in model.neversmooth:
-                        if is_point_in_bounds(vertex.v, ns):
+                    for bounds in model.neversmooth:
+                        if point_in_bounds(vertex.v, bounds):
                             skip = True
+                            break
 
                 if skip: continue
 
+                should_alwayssmooth = False
+                if model.alwaysmooth:
+                    for bounds in model.alwaysmooth:
+                        if point_in_bounds(vertex.v, bounds):
+                            should_alwayssmooth = True
+                            break
+
                 if vertex.flipped:
-                    vlist = flipped_vertices
+                    vlist = flipped_always_smooth if should_alwayssmooth else flipped_vertices
                 else:
-                    vlist = vertices
+                    vlist = always_smooth if should_alwayssmooth else vertices
                 
                 if not vertex_in_list(vertex, vlist):
                     vlist[vertex.v] = [vertex]
@@ -180,8 +191,10 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
                     vlist[vertex.v].append(vertex)
     
         angle_threshold = deg2rad(model.smoothing)
-        smooth_normals(vertices, angle_threshold)
-        smooth_normals(flipped_vertices, angle_threshold)
+        smooth_near_normals(vertices, angle_threshold)
+        smooth_near_normals(flipped_vertices, angle_threshold)
+        smooth_all_normals(always_smooth)
+        smooth_all_normals(flipped_always_smooth)
 
     return models
 

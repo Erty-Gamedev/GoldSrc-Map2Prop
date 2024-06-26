@@ -266,9 +266,17 @@ def average_near_normals(vertices: List[Vertex], threshold: float) -> None:
     return None
 
 
-def smooth_normals(points: Dict[Vector3D, List[Vertex]], threshold: float) -> None:
+def smooth_near_normals(points: Dict[Vector3D, List[Vertex]], threshold: float) -> None:
     for vertices in points.values():
         average_near_normals(vertices, threshold)
+
+
+def smooth_all_normals(points: Dict[Vector3D, List[Vertex]]) -> None:
+    for vertices in points.values():
+        normals = {v.n: v.n for v in vertices}
+        average_normal = average_vectors(list(normals))
+        for vertex in vertices:
+            vertex.n = average_normal
 
 
 def intersection_3planes(p1: HessianPlane,
@@ -363,9 +371,7 @@ def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
     return flipped
 
 
-def is_point_in_bounds(point: Union[Vertex, Vector3D], bounds: Bounds) -> bool:
-    if isinstance(point, Vertex):
-        point: Vector3D = point.v
+def point_in_bounds(point: Vector3D, bounds: Bounds) -> bool:
     bounds: Tuple[Vector3D, Vector3D]
     bmin, bmax = bounds
     
