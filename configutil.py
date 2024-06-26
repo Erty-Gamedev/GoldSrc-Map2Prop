@@ -15,7 +15,7 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.8.6-beta'
+VERSION = '0.9.0-beta'
 
 
 class ConfigUtil:
