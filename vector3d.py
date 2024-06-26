@@ -3,10 +3,10 @@
 @author: Erty
 """
 
-from typing import Union, TypeAlias
+from typing import Union, TypeAlias, Final
 from math import sqrt
 
-EPSILON = 1/(2**10)
+EPSILON: Final[float] = 1/(2**10)
 Number: TypeAlias = Union[int, float]
 
 
