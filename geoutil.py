@@ -23,6 +23,7 @@ class Vertex:
     v: Vector3D
     t: Vector3D
     n: Vector3D
+    flipped: bool = False
 
 
 @dataclass
@@ -240,51 +241,33 @@ def average_vectors(vectors: List[Vector3D]) -> Vector3D:
     return (sum_vectors(vectors) / len(vectors)).normalized
 
 
-def average_near_normals(normals: List[Vector3D], threshold: float) -> Dict[Vector3D, Vector3D]:
-    new_normals = {}
+def average_near_normals(vertices: List[Vertex], threshold: float) -> None:
+    remaining = vertices
 
-    i, c = 0, 0
-    while i < len(normals):
+    c, limit = 0, len(vertices) + 1000
+    while remaining:
         c += 1
-        if c > 1000:
-            raise Exception('Possible infinite loop encountered')
-
-        a = normals[i]
-
+        if c > limit:
+            raise ValueError('Possible infinite loop detected')
+        
+        a = remaining[0]
         near = [a]
-        for b in normals:
+        for b in remaining:
             if b is a:
                 continue
-            if vectors_angle(a, b) <= threshold:
+            if vectors_angle(a.n, b.n) <= threshold:
                 near.append(b)
-        if len(near) == 1:
-            new_normals[a] = a
-            i += 1
-            continue
-
-        new_normals[a] = average_vectors(near)
-        for n in near:
-            new_normals[n] = new_normals[a]
-            normals.remove(n)
-
-        i = 0
-
-    return new_normals
+        
+        average_normal = average_vectors({v.n: v.n for v in near}.values())
+        for point in near:
+            point.n = average_normal
+            remaining.remove(point)
+    return None
 
 
-def smooth_normals(
-        vertices: Dict[Vector3D, List[Vertex]],
-        vertex_polygon_map: Dict[Vector3D, List[Polygon]],
-        threshold: float) -> None:
-    for vertex, points in vertices.items():
-        # Use a dictionary to filter out duplicates
-        normals = {p.normal: p.normal for p in vertex_polygon_map[vertex]}
-        if not len(normals):
-            continue
-        averaged = average_vectors(list(normals.values()))
-        for point in points:
-            if vectors_angle(averaged, point.n) < (threshold):
-                point.n = averaged
+def smooth_normals(points: Dict[Vector3D, List[Vertex]], threshold: float) -> None:
+    for vertices in points.values():
+        average_near_normals(vertices, threshold)
 
 
 def intersection_3planes(p1: HessianPlane,
@@ -380,6 +363,6 @@ def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:
 def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
     flipped = []
     for polygon in polygons:
-        vertices = [Vertex(vertex.v, vertex.t, -vertex.n) for vertex in reversed(polygon.vertices)]
+        vertices = [Vertex(vertex.v, vertex.t, -vertex.n, True) for vertex in reversed(polygon.vertices)]
         flipped.append(Polygon(vertices, polygon.texture, True))
     return flipped

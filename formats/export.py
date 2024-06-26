@@ -157,30 +157,21 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
 
         vertices: Dict[Vector3D, List[Vertex]] = {}
         flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
-        vertex_polygon_map: Dict[Vector3D, List[Polygon]] = {}
-        flipped_vertex_polygon_map: Dict[Vector3D, List[Polygon]] = {}
         for polygon in model.polygons:
-            if polygon.flipped:
-                vlist = flipped_vertices
-                vpolymap = flipped_vertex_polygon_map
-            else:
-                vlist = vertices
-                vpolymap = vertex_polygon_map
-
             for vertex in polygon.vertices:
+                if vertex.flipped:
+                    vlist = flipped_vertices
+                else:
+                    vlist = vertices
+                
                 if not vertex_in_list(vertex, vlist):
                     vlist[vertex.v] = [vertex]
                 else:
                     vlist[vertex.v].append(vertex)
-                if vertex.v not in vpolymap:
-                    vpolymap[vertex.v] = [polygon]
-                    continue
-                if polygon not in vpolymap[vertex.v]:
-                    vpolymap[vertex.v].append(polygon)
     
         angle_threshold = deg2rad(model.smoothing)
-        smooth_normals(vertices, vertex_polygon_map, angle_threshold)
-        smooth_normals(flipped_vertices, flipped_vertex_polygon_map, angle_threshold)
+        smooth_normals(vertices, angle_threshold)
+        smooth_normals(flipped_vertices, angle_threshold)
 
     return models
 
