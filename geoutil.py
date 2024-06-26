@@ -5,17 +5,18 @@ Geometric functions and classes
 @author: Erty
 """
 
-from typing import List, Tuple, Union, Literal, Dict
+from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
 from dataclasses import dataclass
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
 from triangulate.triangulate import triangulate
 
 
-PI = 3.141592653589793116
-DEG2RAD = PI / 180.0
-RAD2DEG = 180.0 / PI
-EPSILON = 1e-10
+PI: Final[float] = 3.141592653589793116
+DEG2RAD: Final[float] = PI / 180.0
+RAD2DEG: Final[float] = 180.0 / PI
+EPSILON: Final[float] = 1/(2**10)
+Bounds: TypeAlias = Tuple[Vector3D, Vector3D]
 
 
 @dataclass
@@ -301,26 +302,20 @@ def geometric_center(vertices: List[Vector3D]) -> Vector3D:
     return center / len(vertices)
 
 
-def bounds_from_points(points: List[Vector3D]) -> Tuple[Vector3D, Vector3D]:
-    min = Vector3D(0, 0, 0)
-    max = Vector3D(0, 0, 0)
+def bounds_from_points(points: List[Vector3D]) -> Bounds:
+    bmin = Vector3D(*points[0])
+    bmax = Vector3D(*points[0])
 
     for point in points:
-        if point.x < min.x:
-            min.x = point.x
-        if point.y < min.y:
-            min.y = point.y
-        if point.z < min.z:
-            min.z = point.z
+        if point.x < bmin.x: bmin.x = point.x
+        if point.y < bmin.y: bmin.y = point.y
+        if point.z < bmin.z: bmin.z = point.z
         
-        if point.x > max.x:
-            max.x = point.x
-        if point.y > max.y:
-            max.y = point.y
-        if point.z > max.z:
-            max.z = point.z
+        if point.x > bmax.x: bmax.x = point.x
+        if point.y > bmax.y: bmax.y = point.y
+        if point.z > bmax.z: bmax.z = point.z
     
-    return min, max
+    return bmin, bmax
 
 
 def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
@@ -366,3 +361,14 @@ def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
         vertices = [Vertex(vertex.v, vertex.t, -vertex.n, True) for vertex in reversed(polygon.vertices)]
         flipped.append(Polygon(vertices, polygon.texture, True))
     return flipped
+
+
+def is_point_in_bounds(point: Union[Vertex, Vector3D], bounds: Bounds) -> bool:
+    if isinstance(point, Vertex):
+        point: Vector3D = point.v
+    bounds: Tuple[Vector3D, Vector3D]
+    bmin, bmax = bounds
+    
+    return point.x > bmin.x and point.x < bmax.x\
+        and point.y > bmin.y and point.y < bmax.y\
+        and point.z > bmin.z and point.z < bmax.z
