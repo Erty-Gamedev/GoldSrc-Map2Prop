@@ -1,73 +1,109 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue May 30 10:40:33 2023
 
-@author: Erty
-"""
-
+from typing import List, Dict, Final, Literal
 from pathlib import Path
-from logutil import get_logger, shutdown_logger
-from geoutil import (Vector3D, PolyPoint, PolyFace,
-                     InvalidSolidException, triangulate_face)
+import logging
+from geoutil import (Vector3D, Vertex, Polygon, Texture,
+                     ImageInfo, triangulate_face)
+from formats.base_classes import BaseReader, BaseEntity, BaseFace, BaseBrush
 from formats.wad_handler import WadHandler
 
 
-mtllib_prefix = 'mtllib '
-mtl_prefix = 'newmtl '
-mtl_map_prefix = 'map_Ka '
+logger = logging.getLogger(__name__)
 
-object_prefix = 'o '
-group_prefix = 'g '
-smooth_prefix = 's '
-usemtl_prefix = 'usemtl '
+mtllib_prefix: Final[Literal['mtllib ']] = 'mtllib '
+mtl_prefix: Final[Literal['newmtl ']] = 'newmtl '
+mtl_map_prefix: Final[Literal['map_Ka ']] = 'map_Ka '
 
-vertex_prefix = 'v '            # (x y z)
-texture_coord_prefix = 'vt '    # (u v w)
-vertex_normal_prefix = 'vn '    # (x y z)
-poly_face_prefix = 'f '         # (vertex_index/texture_index/normal_index)
+object_prefix: Final[Literal['o ']] = 'o '
+group_prefix: Final[Literal['g ']] = 'g '
+smooth_prefix: Final[Literal['s ']] = 's '
+usemtl_prefix: Final[Literal['usemtl ']] = 'usemtl '
+
+vertex_prefix: Final[Literal['v ']] = 'v '           # (x y z)
+texture_coord_prefix: Final[Literal['vt ']] = 'vt '  # (u v w)
+vertex_normal_prefix: Final[Literal['vn ']] = 'vn '  # (x y z)
+poly_face_prefix: Final[Literal['f ']] = 'f '        # (vertex_index/texture_index/normal_index)
 # Note: The above indices are 1-indexed
 
 
-def parseCoord(coord: str) -> list:
-    coord = coord.split(' ')
-    return Vector3D(*[float(n) for n in coord])
+class ObjGroup:
+    def __init__(self, name: str):
+        self.name: str = name
+        self.faces: List[Face] = []
+
+class ObjObject:
+    def __init__(self, name: str, smooth: str = 'off'):
+        self.name: str = name
+        self.smooth: str = smooth
+        self.groups: Dict[str, ObjGroup] = {}
 
 
-class ObjReader:
+class Face(BaseFace):
+    def __init__(self, points: List[Vector3D], vertices: List[Vertex], texture: str):
+        self._points = points
+        self._vertices = vertices
+        self._polygons: List[Polygon] = []
+        self._texture = Texture(texture)
+
+        for triangle in triangulate_face(self._points):
+            polygon = []
+            for point in triangle:
+                for vertex in self._vertices:
+                    if point == vertex.v:
+                        polygon.append(vertex)
+                        break
+            self._polygons.append(Polygon(polygon, texture))
+    @property
+    def points(self): return self._points
+    @property
+    def vertices(self): return self._vertices
+    @property
+    def polygons(self): return self._polygons
+    @property
+    def texture(self): return self._texture
+
+
+class Brush(BaseBrush):
+    pass
+class Entity(BaseEntity):
+    pass
+
+
+def parseCoord(coord: str) -> Vector3D:
+    coords: List[str] = coord.split(' ')
+    return Vector3D(*[float(n) for n in coords])
+
+
+class ObjReader(BaseReader):
     """Reads an .obj format file and parses geometry data."""
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-
-        self.vertexcoords = []
-        self.texturecoords = []
-        self.normalcoords = []
-
-        self.textures = []
-        self.objects = {}
-        self.maskedtextures = []
-        self.allfaces = []
-        self.allpolypoints = []
-        self.vn_map = {}
-        self.checked = []
-        self.missing_textures = False
-
-        self.logger = get_logger(__name__)
         self.filedir = self.filepath.parents[0]
+        self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
+        self.checked: List[str] = []
+        self.textures: Dict[str, ImageInfo] = {}
+        self.missing_textures = False
+        self.entities: List[BaseEntity] = []
 
-        self.readfile()
+        self.vertexcoords: List[Vector3D] = []
+        self.texturecoords: List[Vector3D] = []
+        self.normalcoords: List[Vector3D] = []
 
-        shutdown_logger(self.logger)
+        self.objects: Dict[str, ObjObject] = {}
 
-    def __del__(self):
-        shutdown_logger(self.logger)
+        self.parse()
 
-    def readfile(self):
+    def parse(self) -> None:
+        objects: Dict[str, ObjObject] = {}
+
         with self.filepath.open('r') as objfile:
             current_obj = ''
 
             for line in objfile:
+                # Skip comments
                 if line.startswith('#'):
                     continue
 
@@ -88,18 +124,13 @@ class ObjReader:
                 # Parse objects and brushes:
                 elif line.startswith(object_prefix):
                     current_obj = line[len(object_prefix):]
-                    self.objects[current_obj] = {
-                        'smooth': 'off',
-                        'groups': {},
-                    }
+                    objects[current_obj] = ObjObject(current_obj)
                 elif line.startswith(smooth_prefix):
-                    self.objects[current_obj]['smooth'] = (
+                    objects[current_obj].smooth = (
                         line[len(smooth_prefix):])
                 elif line.startswith(group_prefix):
                     group = line[len(group_prefix):]
-                    self.objects[current_obj]['groups'][group] = {
-                        'faces': []
-                    }
+                    objects[current_obj].groups[group] = ObjGroup(group)
 
                 # Parse textures:
                 elif line.startswith(usemtl_prefix):
@@ -109,11 +140,6 @@ class ObjReader:
                     if tex not in self.checked:
                         if not self.wadhandler.check_texture(tex):
                             self.missing_textures = True
-
-                        # Make note of masked textures
-                        if (tex.startswith('{')
-                                and tex not in self.maskedtextures):
-                            self.maskedtextures.append(tex)
                         self.checked.append(tex)
 
                 # Parse faces:
@@ -121,48 +147,31 @@ class ObjReader:
                     if tex.lower() in self.wadhandler.SKIP_TEXTURES:
                         continue
 
-                    points = line[len(poly_face_prefix):].split(' ')
+                    facepoints = line[len(poly_face_prefix):].split(' ')
 
-                    verts = []
-                    polypoints = []
-                    for point in points:
-                        i_v, i_t, i_n = [int(n) for n in point.split('/')]
-                        polypoint = PolyPoint(
+                    points: List[Vector3D] = []
+                    vertices: List[Vertex] = []
+                    for facepoint in facepoints:
+                        i_v, i_t, i_n = [int(n) for n in facepoint.split('/')]
+                        vertex = Vertex(
                             self.vertexcoords[i_v - 1],
                             self.texturecoords[i_t - 1],
                             self.normalcoords[i_n - 1]
                         )
+                        vertices.append(vertex)
+                        points.append(self.vertexcoords[i_v - 1])
+                    
+                    objects[current_obj].groups[group].faces.append(
+                        Face(points, vertices, tex))
 
-                        if polypoint.v not in self.vn_map:
-                            self.vn_map[polypoint.v] = []
-                        self.vn_map[polypoint.v].append(polypoint.n)
+        self.process_objects(objects)
 
-                        polypoints.append(polypoint)
-                        self.allpolypoints.append(polypoint)
-                        verts.append(self.vertexcoords[i_v - 1])
-
-                    try:
-                        tris = triangulate_face(verts)
-                    except Exception:
-                        self.logger.exception('Face triangulation failed')
-                        raise
-
-                    for tri in tris:
-                        face = []
-                        for p in tri:
-                            for polyp in polypoints:
-                                if p == polyp.v:
-                                    face.append(polyp)
-                                    break
-
-                        try:
-                            polyface = PolyFace(face, tex)
-                        except InvalidSolidException as ise:
-                            self.logger.error(
-                                "Object had one or more invalid faces: " +
-                                f"{ise.message}")
-                            raise
-
-                        self.allfaces.append(polyface)
-                        (self.objects[current_obj]['groups'][group]['faces']
-                         .append(PolyFace(face, tex)))
+    def process_objects(self, objects: Dict[str, ObjObject]) -> None:
+        for object in objects.values():
+            name = object.name.lower()
+            if 'entity' in name:
+                classname = name[name.find('(') + 1 : name.find(')')]
+                brushes: List[Brush] = []
+                for group in object.groups.values():
+                    brushes.append(Brush(group.faces))
+                self.entities.append(Entity(classname, {}, brushes))

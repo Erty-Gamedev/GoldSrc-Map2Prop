@@ -1,44 +1,47 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue May 30 10:38:33 2023
 
-@author: Erty
-"""
-
+from typing import Tuple
+from io import BufferedReader
 from struct import unpack
-from geoutil import Vector3D, PolyPoint, plane_normal
 
 
-def read_byte(file) -> bytes:
+def read_byte(file: BufferedReader) -> bytes:
+    """Reads a single byte from the buffer"""
     return unpack('<b', file.read(1))[0]
 
 
-def read_bool(file) -> bytes:
+def read_bool(file: BufferedReader) -> bytes:
+    """Reads a single byte from the buffer"""
     return unpack('<?', file.read(1))[0]
 
 
-def read_short(file) -> bytes:
+def read_short(file: BufferedReader) -> bytes:
+    """Reads two bytes from the buffer"""
     return unpack('<h', file.read(2))[0]
 
 
-def read_int(file) -> int:
+def read_int(file: BufferedReader) -> int:
+    """Reads 4 bytes (int32) from the buffer"""
     return unpack('<i', file.read(4))[0]
 
 
-def read_float(file) -> float:
+def read_float(file: BufferedReader) -> float:
+    """Reads 4 bytes (float) from the buffer"""
     return unpack('<f', file.read(4))[0]
 
 
-def read_double(file) -> float:
+def read_double(file: BufferedReader) -> float:
+    """Reads 8 bytes (double) from the buffer"""
     return unpack('<d', file.read(8))[0]
 
 
-def read_string(file, length: int) -> str:
+def read_string(file: BufferedReader, length: int) -> str:
+    """Reads length bytes from the buffer"""
     return unpack(f"<{length}s", file.read(length))[0]
 
 
-def read_ntstring(file, length: int) -> str:
-    """Reads a null-terminated string of a set length."""
+def read_ntstring(file: BufferedReader, length: int) -> str:
+    """Reads a null-terminated string of a set length from the buffer"""
     strbytes = unpack(f"<{length}s", file.read(length))[0]
     string = ''
     for b in strbytes:
@@ -48,9 +51,9 @@ def read_ntstring(file, length: int) -> str:
     return string
 
 
-def read_lpstring(file) -> str:
-    """Reads a length-prefixed ascii string."""
-    strlen = read_byte(file)
+def read_lpstring(file: BufferedReader) -> str:
+    """Reads a length-prefixed ascii string from the buffer"""
+    strlen = int(read_byte(file))
     if strlen == 0:
         return ''
     if strlen < 0:
@@ -58,8 +61,8 @@ def read_lpstring(file) -> str:
     return read_ntstring(file, strlen)
 
 
-def read_lpstring2(file) -> str:
-    """Reads a 4-byte length-prefixed ascii string."""
+def read_lpstring2(file: BufferedReader) -> str:
+    """Reads a 4-byte length-prefixed ascii string from the buffer"""
     buffer = file.read(4)
     if len(buffer) < 4:
         raise EndOfFileException()
@@ -69,7 +72,8 @@ def read_lpstring2(file) -> str:
     return read_ntstring(file, strlen)
 
 
-def read_colour(file) -> tuple:
+def read_colour(file: BufferedReader) -> Tuple[int, int, int]:
+    """Reads 3 bytes from the buffer"""
     return (
         unpack('<B', file.read(1))[0],
         unpack('<B', file.read(1))[0],
@@ -77,7 +81,8 @@ def read_colour(file) -> tuple:
     )
 
 
-def read_colour_rgba(file) -> tuple:
+def read_colour_rgba(file: BufferedReader) -> Tuple[int, int, int, int]:
+    """Reads 4 bytes from the buffer"""
     return (
         unpack('<B', file.read(1))[0],
         unpack('<B', file.read(1))[0],
@@ -86,7 +91,8 @@ def read_colour_rgba(file) -> tuple:
     )
 
 
-def read_vector3D(file) -> tuple:
+def read_vector3D(file: BufferedReader) -> Tuple[float, float, float]:
+    """Reads 12 bytes from the buffer"""
     return (
         read_float(file),
         read_float(file),
@@ -94,7 +100,8 @@ def read_vector3D(file) -> tuple:
     )
 
 
-def read_angles(file):
+def read_angles(file: BufferedReader) -> Tuple[float, float, float]:
+    """Reads 12 bytes from the buffer"""
     return read_vector3D(file)
 
 
@@ -108,128 +115,3 @@ class EndOfFileException(Exception):
 
 class MissingTextureException(Exception):
     pass
-
-
-class VisGroup:
-    def __init__(self, id: int, name: str, colour: tuple, visible: bool):
-        self.id = id
-        self.name = name
-        self.colour = colour
-        self.visible = visible
-
-
-class MapObject:
-    def __init__(self, colour: tuple):
-        self.colour = colour
-        self.visgroup, self.group = None, None
-
-
-class Brush(MapObject):
-    def __init__(self, faces: list, colour: tuple):
-        super().__init__(colour)
-        self.faces = faces
-
-
-class Entity(MapObject):
-    def __init__(self, brushes: list, colour: tuple, classname: str,
-                 flags: int, properties: dict, origin: tuple):
-        super().__init__(colour)
-        self.brushes = brushes
-        self.classname = classname
-        self.flags = flags
-        self.properties = properties
-        if not brushes:
-            self.origin = origin
-
-
-class Group(MapObject):
-    def __init__(self, colour: tuple, objects: list):
-        super().__init__(colour)
-        self.objects = objects
-
-
-class JGroup:
-    def __init__(self, colour: tuple, id: int):
-        self.colour = colour
-        self.id = id
-
-
-class Plane:
-    pass
-
-
-class Face:
-    def __init__(self, vertices: list, plane_points: list, texture: dict):
-        self.vertices = vertices
-        self.plane_points = [Vector3D(*p) for p in plane_points]
-        self.texture = texture
-        self.plane_normal = plane_normal(self.plane_points)
-
-        self.polypoints = []
-
-        for vertex in self.vertices:
-            u, v = self.__project_uv(vertex)
-            self.polypoints.append(PolyPoint(
-                Vector3D(*vertex),
-                Vector3D(
-                    u / self.texture['width'],
-                    v / self.texture['height'],
-                    0),
-                Vector3D(*self.plane_normal)
-            ))
-
-    def __project_uv(self, vertex: tuple):
-        vertex = Vector3D(*vertex)
-
-        # Get texture plane normal, not face plane normal
-        plane_normal = Vector3D(*self.texture['rightaxis']).cross(
-            Vector3D(*self.texture['downaxis']))
-
-        projected = vertex - (vertex.dot(plane_normal) * plane_normal)
-
-        u = self.texture['shiftx'] * self.texture['scalex']
-        v = -self.texture['shifty'] * self.texture['scaley']
-
-        u += projected.dot(self.texture['rightaxis'])
-        v -= projected.dot(self.texture['downaxis'])
-
-        # Apply scale:
-        u, v = u / self.texture['scalex'], v / self.texture['scaley']
-
-        return u, v
-
-
-class JFace:
-    def __init__(self, vertices: list, texture: dict, normal: tuple = None):
-        self.vertices = vertices
-        self.texture = texture
-        self.plane_normal = normal
-
-        self.polypoints = []
-
-        for i, vertex in enumerate(self.vertices):
-            u, v = vertex[3:]
-            vertex = vertex[:3]
-            self.polypoints.append(PolyPoint(
-                Vector3D(*vertex),
-                Vector3D(u, -v, 0),
-                Vector3D(*self.plane_normal)
-            ))
-            self.vertices[i] = vertex
-
-
-class EntityPath:
-    def __init__(self, name: str, classname: str, pathtype: int, nodes: list):
-        self.name = name
-        self.classname = classname
-        self.pathtype = pathtype
-        self.nodes = nodes
-
-
-class PathNode:
-    def __init__(self, position: tuple, index: int,
-                 name_override: str, properties: dict):
-        self.position = position
-        self.index = index
-        self.name_override = name_override
-        self.properties = properties

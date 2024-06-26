@@ -5,12 +5,13 @@ Created on Wed Jul 19 16:44:40 2023
 @author: Erty
 """
 
-
+from typing import List, Tuple, Union, Generator
 from vector3d import Vector3D
 from itertools import chain
 
 
-def looped_pairs(polygon: list) -> tuple:
+def looped_pairs(
+        polygon: List[Vector3D]) -> Generator[Tuple[Vector3D, Vector3D], None, None]:
     iterable = iter(polygon)
     first = last = next(iterable)
     for x in iterable:
@@ -19,20 +20,28 @@ def looped_pairs(polygon: list) -> tuple:
     yield (last, first)
 
 
-def looped_slice(polygon: list, start: int, count: int) -> list:
+def looped_slice(
+        polygon: List[Vector3D],
+        start: int,
+        count: int) -> Generator[Vector3D, None, None]:
     length = len(polygon)
     for i in range(start, start + count):
         yield polygon[i % length]
 
 
-def looped_slice_inv(polygon, start, count) -> list:
+def looped_slice_inv(
+        polygon: List[Vector3D],
+        start: int,
+        count: int) -> Union[List[Vector3D]]:
     if start + count > len(polygon):
         return polygon[start + count - len(polygon): start]
     else:
-        return chain(polygon[:start], polygon[start + count:])
+        return list(chain(polygon[:start], polygon[start + count:]))
 
 
-def point_in_triangle(point, triangle) -> bool:
+def point_in_triangle(
+        point: Vector3D,
+        triangle: Union[Tuple[Vector3D, Vector3D, Vector3D], List[Vector3D]]) -> bool:
     a, b, c = triangle
 
     # Offset triangle by point, that way everything's relative to origin
@@ -52,14 +61,16 @@ def point_in_triangle(point, triangle) -> bool:
     return True
 
 
-def points_in_triangle(triangle, points) -> bool:
+def points_in_triangle(
+        triangle: Union[Tuple[Vector3D, Vector3D, Vector3D], List[Vector3D]],
+        points: List[Vector3D]) -> bool:
     for point in points:
         if point_in_triangle(point, triangle):
             return True
     return False
 
 
-def polygon_normal(polygon: list) -> Vector3D:
+def polygon_normal(polygon: List[Vector3D]) -> Vector3D:
     normal = Vector3D(0, 0, 0)
     for a, b in looped_pairs(polygon):
         m = b - a
@@ -70,7 +81,7 @@ def polygon_normal(polygon: list) -> Vector3D:
     return normal
 
 
-def triangulate(polygon: list):
+def triangulate(polygon: List[Vector3D]):
     """
     Converts a polygon to a set of triangles that cover the same area.
 
@@ -87,7 +98,7 @@ def triangulate(polygon: list):
     polygon = [Vector3D(*v) for v in polygon]
 
     normal = polygon_normal(polygon)
-    i = 0
+    i: int = 0
     while len(polygon) > 2:
         if i >= len(polygon):
             raise Exception('Triangulation failed')

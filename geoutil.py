@@ -1,31 +1,61 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 18 10:38:39 2023
+Geometric functions and classes
 
 @author: Erty
 """
 
-
+from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
+from dataclasses import dataclass
 from vector3d import Vector3D
 from math import sqrt, cos, sin, acos
 from triangulate.triangulate import triangulate
 
 
-PI = 3.141592653589793116
-DEG2RAD = PI / 180.0
-EPSILON = 1e-10
+PI: Final[float] = 3.141592653589793116
+DEG2RAD: Final[float] = PI / 180.0
+RAD2DEG: Final[float] = 180.0 / PI
+EPSILON: Final[float] = 1/(2**10)
+Bounds: TypeAlias = Tuple[Vector3D, Vector3D]
 
 
-class PolyPoint:
-    def __init__(self, v: Vector3D, t: Vector3D, n: Vector3D):
-        self.v, self.t, self.n = v, t, n
+@dataclass
+class Vertex:
+    v: Vector3D
+    t: Vector3D
+    n: Vector3D
+    flipped: bool = False
 
 
-class PolyFace:
-    def __init__(self, polypoints: list, texture: str):
-        self.polypoints = polypoints
-        self.vertices = [p.v for p in self.polypoints]
-        self.texture = texture
+@dataclass
+class Polygon:
+    vertices: List[Vertex]
+    texture: str
+    flipped: bool = False
+
+    @property
+    def normal(self) -> Vector3D:
+        return plane_normal([v.v for v in self.vertices])
+
+
+@dataclass
+class ImageInfo:
+    width: int
+    height: int
+
+
+@dataclass
+class Texture:
+    name: str
+    rightaxis: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    shiftx: float = 0.0
+    downaxis: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    shifty: float = 0.0
+    angle: float = 0.0
+    scalex: float = 1.0
+    scaley: float = 1.0
+    width: int = 16
+    height: int = 16
 
 
 class HessianPlane:
@@ -38,7 +68,7 @@ class HessianPlane:
         plane_point = self.normal * self.d
         return self.normal.dot((point - plane_point))
 
-    def point_relation(self, point: Vector3D) -> int:
+    def point_relation(self, point: Vector3D) -> Literal[-1, 0, 1]:
         """+1 if point is in front, -1 if behind, 0 if on plane"""
         d = self.distance_to_point(point)
         if abs(d) < EPSILON:
@@ -53,12 +83,15 @@ class HessianPlane:
 
 
 class Plane(HessianPlane):
-    def __init__(self, plane_points: list, texture: dict = {}):
-        plane_points = [Vector3D(*p) for p in plane_points[:3]]
-        plane_points.reverse()
-        super().__init__(*points_to_plane(*plane_points))
-        self.plane_points = plane_points
-        self.texture = texture
+    def __init__(
+            self,
+            plane_points: Union[List[Tuple[float, float, float]], List[Vector3D]],
+            texture: Texture):
+        plane_vectors: List[Vector3D] = [Vector3D(*p) for p in plane_points[:3]]
+        plane_vectors.reverse()
+        super().__init__(*points_to_plane(*plane_vectors))
+        self.plane_points = plane_vectors
+        self.texture: Texture = texture
 
 
 class InvalidSolidException(Exception):
@@ -80,24 +113,33 @@ def direction(angle: float) -> int:
 
 
 def segments_dot(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    """Finds the dot product between the segments AB and BC"""
     return (a - b).dot(b - c)
 
 
 def segments_cross(a: Vector3D, b: Vector3D, c: Vector3D) -> Vector3D:
+    """Finds the cross product between the segments AB and BC"""
     return (c - b).cross(a - b)
 
 
 def clip(value, minimum, maximum):
+    """Limit the value between the minimum and maximum"""
     return min(maximum, max(minimum, value))
 
 
-def vectors_angle(a: Vector3D, b: Vector3D):
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
+def vectors_angle(a: Vector3D, b: Vector3D) -> float:
+    """Returns the angle between two vectors"""
     return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
 
 
-def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D):
-    vector_ab = [b.x - a.x, b.y - a.y, b.z - a.z]
-    vector_bc = [c.x - b.x, c.y - b.y, c.z - b.z]
+def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D) -> float:
+    """Returns the angle between the segments ab and bc in radians"""
+    vector_ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
+    vector_bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
     return vectors_angle(vector_ab, vector_bc)
 
 
@@ -122,17 +164,24 @@ def plane_rotation(normal, d):
     ]
 
 
-def deg2rad(degrees) -> float:
-    return degrees * DEG2RAD
+def deg2rad(degrees: float) -> float:
+    """Convert degrees to radians"""
+    return (degrees * DEG2RAD) % (2 * PI)
+
+def rad2deg(radians: float) -> float:
+    """Converts radians to degrees"""
+    return (radians * RAD2DEG) % 360.0
 
 
 def rotate_2d(vector: tuple, degrees: float) -> tuple:
+    """Rotate the 2D vector by the given angle in degrees"""
     x, y = vector
     th = deg2rad(degrees)
     return x * cos(th) - y * sin(th), x * sin(th) + y * cos(th)
 
 
-def polygon_transpose(polygon, vector):
+def polygon_transpose(polygon: list, vector: Vector3D) -> list:
+    """Transpose all points in the polygon by the given vector"""
     new_poly = []
     for point in polygon:
         new_poly.append(Vector3D(
@@ -159,40 +208,23 @@ def flatten_plane(polygon: list):
     return new_poly
 
 
-def is_point_on_plane(point: Vector3D, normal, k) -> bool:
-    a, b, c = normal
-    return abs(
-        a * point.x + b * point.y + c * point.z + k) < EPSILON
-
-
-def plane_normal(plane_points: tuple):
+def plane_normal(plane_points: Union[tuple, list]) -> Vector3D:
+    """Returns the normalized normal vector of the plane"""
     return segments_cross(*plane_points).normalized
 
 
-def points_to_plane(a, b, c):
+def points_to_plane(a, b, c) -> tuple:
+    """Return the plane's normal vector and distance by three points"""
     normal = segments_cross(a, b, c).normalized
     return normal, normal.dot(a)
 
 
-def polygon_to_plane(polygon: list):
+def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
 
 
-def check_planar(polygon: list) -> bool:
-    if len(polygon) < 3:
-        return False
-    if len(polygon) == 3:
-        return True
-
-    normal, k = polygon_to_plane(polygon)
-
-    for point in polygon[3:]:
-        if not is_point_on_plane(point, normal, k):
-            return False
-    return True
-
-
-def triangulate_face(polygon: list) -> list:
+def triangulate_face(polygon: list) -> List[List[Vector3D]]:
+    """Returns a list of triangulated polygons from the polygon"""
     tris = []
     try:
         for tri in triangulate(polygon):
@@ -202,49 +234,57 @@ def triangulate_face(polygon: list) -> list:
     return tris
 
 
-def sum_vectors(vectors: list) -> Vector3D:
+def sum_vectors(vectors: List[Vector3D]) -> Vector3D:
     return Vector3D(*[sum(v) for v in zip(*vectors)])
 
 
-def average_normals(normals: list) -> Vector3D:
-    return (sum_vectors(normals) / len(normals)).normalized
+def average_vectors(vectors: List[Vector3D]) -> Vector3D:
+    return (sum_vectors(vectors) / len(vectors)).normalized
 
 
-def average_near_normals(normals: list, threshold: float) -> dict:
-    new_normals = {}
+def average_near_normals(vertices: List[Vertex], threshold: float) -> None:
+    remaining = vertices
 
-    i, c = 0, 0
-    while i < len(normals):
+    c, limit = 0, len(vertices) + 1000
+    while remaining:
         c += 1
-        if c > 1000:
-            raise Exception('Possible infinite loop encountered')
-
-        a = normals[i]
-
+        if c > limit:
+            raise ValueError('Possible infinite loop detected')
+        
+        a = remaining[0]
         near = [a]
-        for b in normals:
+        for b in remaining:
             if b is a:
                 continue
-            if vectors_angle(a, b) <= threshold:
+            if vectors_angle(a.n, b.n) <= threshold:
                 near.append(b)
-        if len(near) == 1:
-            new_normals[a] = a
-            i += 1
-            continue
+        
+        average_normal = average_vectors({v.n: v.n for v in near}.values())
+        for point in near:
+            point.n = average_normal
+            remaining.remove(point)
+    return None
 
-        new_normals[a] = average_normals(near)
-        for n in near:
-            new_normals[n] = new_normals[a]
-            normals.remove(n)
 
-        i = 0
+def smooth_near_normals(points: Dict[Vector3D, List[Vertex]], threshold: float) -> None:
+    for vertices in points.values():
+        average_near_normals(vertices, threshold)
 
-    return new_normals
+
+def smooth_all_normals(points: Dict[Vector3D, List[Vertex]]) -> None:
+    for vertices in points.values():
+        normals = {v.n: v.n for v in vertices}
+        average_normal = average_vectors(list(normals))
+        for vertex in vertices:
+            vertex.n = average_normal
 
 
 def intersection_3planes(p1: HessianPlane,
                          p2: HessianPlane,
-                         p3: HessianPlane) -> Vector3D:
+                         p3: HessianPlane) -> Union[Vector3D, Literal[False]]:
+    """Returns the intersection of the three planes,
+    or false if there is no interesection
+    """
     n1, d1 = p1.nd
     n2, d2 = p2.nd
     n3, d3 = p3.nd
@@ -260,7 +300,8 @@ def intersection_3planes(p1: HessianPlane,
     ) / denominator
 
 
-def geometric_center(vertices: list) -> Vector3D:
+def geometric_center(vertices: List[Vector3D]) -> Vector3D:
+    """Returns the geometric center of the given vertices"""
     center = Vector3D(0, 0, 0)
 
     for vertex in vertices:
@@ -269,13 +310,31 @@ def geometric_center(vertices: list) -> Vector3D:
     return center / len(vertices)
 
 
-def sort_vertices(vertices: list, normal: Vector3D) -> list:
+def bounds_from_points(points: List[Vector3D]) -> Bounds:
+    bmin = Vector3D(*points[0])
+    bmax = Vector3D(*points[0])
+
+    for point in points:
+        if point.x < bmin.x: bmin.x = point.x
+        if point.y < bmin.y: bmin.y = point.y
+        if point.z < bmin.z: bmin.z = point.z
+        
+        if point.x > bmax.x: bmax.x = point.x
+        if point.y > bmax.y: bmax.y = point.y
+        if point.z > bmax.z: bmax.z = point.z
+    
+    return bmin, bmax
+
+
+def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
+    """Returns a sorted list of vertices from an unsorted list"""
+    
     center = geometric_center(vertices)
     num_vertices = len(vertices)
 
     for i in range(num_vertices - 2):
         a = (vertices[i] - center).normalized
-        p = Plane([vertices[i], center, center + normal])
+        p = HessianPlane(*points_to_plane(*[vertices[i], center, center + normal]))
 
         angle_smallest = -1
         smallest = -1
@@ -295,3 +354,27 @@ def sort_vertices(vertices: list, normal: Vector3D) -> list:
         vertices = list(reversed(vertices))
 
     return vertices
+
+
+def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:
+    for plane in planes:
+        if plane.point_relation(vertex) > 0:
+            return True
+    return False
+
+
+def flip_faces(polygons: List[Polygon]) -> List[Polygon]:
+    flipped = []
+    for polygon in polygons:
+        vertices = [Vertex(vertex.v, vertex.t, -vertex.n, True) for vertex in reversed(polygon.vertices)]
+        flipped.append(Polygon(vertices, polygon.texture, True))
+    return flipped
+
+
+def point_in_bounds(point: Vector3D, bounds: Bounds) -> bool:
+    bounds: Tuple[Vector3D, Vector3D]
+    bmin, bmax = bounds
+    
+    return point.x > bmin.x and point.x < bmax.x\
+        and point.y > bmin.y and point.y < bmax.y\
+        and point.z > bmin.z and point.z < bmax.z

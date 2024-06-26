@@ -5,20 +5,22 @@ Created on Tue May 30 21:59:28 2023
 @author: Erty
 """
 
+from typing import Any, Union, NoReturn
 import os
 import sys
 import argparse
 import configparser
-from logutil import get_logger, shutdown_logger
+import logging
+from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.8.6-beta'
+VERSION = '0.9.0-beta'
 
 
 class ConfigUtil:
     def __init__(self, filepath: Path):
-        self.args = None
+        self.args: Any = None
         self.config = configparser.ConfigParser()
         if filepath.exists():
             self.config.read(filepath)
@@ -34,10 +36,10 @@ goldsrc .smd files for model creation.',
             exit_on_error=False
         )
 
-    def app_exit(self, status: int = 0, message: str = ''):
+    def app_exit(self, status: int = 0, message: str = '') -> None:
         self.parser.exit(status, message)
 
-    def parseargs(self):
+    def parseargs(self) -> None:
         self.parser.add_argument('input', nargs='?', type=str,
                                  help='.map/.rmf/.jmf/.obj file to convert')
         self.parser.add_argument(
@@ -67,6 +69,12 @@ goldsrc .smd files for model creation.',
         general.add_argument(
             '-a', '--autocompile', action='store_true',
             help='compile model after conversion')
+        general.add_argument(
+            '-t', '--timeout', type=float, default=60.0, metavar='',
+            help='timeout for running studiomdl.exe (default %(default)s)')
+        general.add_argument(
+            '-x', '--autoexit', action='store_true',
+            help='don\'t ask for input after finish')
 
         qc = self.parser.add_argument_group('.qc options')
         qc.add_argument(
@@ -113,7 +121,7 @@ goldsrc .smd files for model creation.',
         return (270.0 + (self.args.rotate if self.args.rotate else 0.0)) % 360
 
     @property
-    def output_dir(self) -> Path:
+    def output_dir(self) -> Union[Path, None]:
         if self.args.output:
             path = self.args.output
         else:
@@ -124,25 +132,25 @@ goldsrc .smd files for model creation.',
     def game_config(self) -> str:
         if self.args.game_config:
             return self.args.game_config
-        return self.config['AppConfig'].get('game config', False)
+        return self.config['AppConfig'].get('game config', None)
 
     @property
-    def studiomdl(self) -> Path:
+    def studiomdl(self) -> Union[Path, None]:
         if self.args.studiomdl:
             return Path(self.args.studiomdl)
-        if studiomdl := (self.config['AppConfig'].get('studiomdl', False)):
+        if studiomdl := (self.config['AppConfig'].get('studiomdl', None)):
             return Path(studiomdl)
         return None
 
     @property
-    def mod_path(self) -> Path:
+    def mod_path(self) -> Union[Path, None]:
         game = self.game_config
-        steamdir = self.config['AppConfig'].get('steam directory', False)
+        steamdir = self.config['AppConfig'].get('steam directory', None)
 
         if not game or not steamdir:
             return None
 
-        return (Path(steamdir) / r'steamapps\common'
+        return (Path(steamdir) / r'steamapps/common'
                 / self.config[game].get('game')
                 / self.config[game].get('mod'))
 
@@ -168,6 +176,17 @@ goldsrc .smd files for model creation.',
                 or self.config['AppConfig'].getboolean('autocompile', False))
 
     @property
+    def timeout(self) -> float:
+        if self.args.timeout:
+            return self.args.timeout
+        return self.config['AppConfig'].getfloat('timeout', 60.0)
+
+    @property
+    def autoexit(self) -> bool:
+        return (self.args.autoexit
+                or self.config['AppConfig'].getboolean('autoexit', False))
+
+    @property
     def smoothing(self) -> bool:
         return bool(self.args.smoothing
                     or self.config['AppConfig'].getboolean('smoothing', False))
@@ -182,13 +201,14 @@ goldsrc .smd files for model creation.',
         self.config['AppConfig'] = {
             'smoothing': 'no',
             'smoothing threshold': 60.0,
-            'output directory': r'\converted',
-            'steam directory': r'C:\Program Files (x86)\Steam',
+            'output directory': r'/converted',
+            'steam directory': r'C:/Program Files (x86)/Steam',
             'game config': 'halflife',
             'wad cache': 10,
-            'studiomdl': (r'%(steam directory)s\steamapps\common'
-                          + r'\Sven Co-op SDK\modelling\studiomdl.exe'),
+            'studiomdl': (r'%(steam directory)s/steamapps/common'
+                          + r'/Sven Co-op SDK/modelling/studiomdl.exe'),
             'autocompile': 'yes',
+            'timeout': 60.0,
             'wad list': ''
         }
         self.config['halflife'] = {
@@ -210,15 +230,15 @@ if getattr(sys, 'frozen', False):
 elif __file__:
     app_dir = os.path.dirname(__file__)
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 try:
-    config = ConfigUtil(Path(app_dir) / 'config.ini')
-except configparser.DuplicateOptionError:
+    config: ConfigUtil = ConfigUtil(Path(app_dir) / 'config.ini')
+except configparser.DuplicateOptionError as e:
     logger.exception('Config file parsing failed.')
     logger.info('If using wad_list in config.ini, make sure each '
                 + "consequtive line is left-aligned with the first line.\n")
-    config = None
-except Exception:
+    raise e
+except Exception as e:
     logger.exception('Config file parsing failed.')
-    config = None
+    raise e
 shutdown_logger(logger)

@@ -6,6 +6,7 @@ Created on Fri May 26 17:18:27 2023
 """
 
 
+from typing import Dict
 from pathlib import Path
 from PIL import Image
 from formats import InvalidFormatException, unpack
@@ -30,8 +31,10 @@ class DirEntry:
 
 class TextureEntry:
     def __init__(self, data: bytes):
-        self.name = unpack('<16s', data[0:16])[0].split(
-            b'\x00', 1)[0].decode('ascii')
+        name_bytes: bytes = unpack('<16s', data[0:16])[0]
+        name_bytes = name_bytes.split(b'\x00', 1)[0]
+        
+        self.name = name_bytes.decode('charmap')
         self.width = unpack('<L', data[16:20])[0]
         self.height = unpack('<L', data[20:24])[0]
         self.mipoffset0 = unpack('<L', data[24:28])[0]
@@ -39,7 +42,7 @@ class TextureEntry:
         self.mipoffset2 = unpack('<L', data[32:36])[0]
         self.mipoffset3 = unpack('<L', data[36:40])[0]
         self.basetexturedata = data[40:self.mipoffset1]
-        self.image = Image.frombytes(
+        self.image: Image.Image = Image.frombytes(
             'P', (self.width, self.height), self.basetexturedata, 'raw')
         self.image.putpalette(data[-PALETTE_SIZE-2:-2])
 
@@ -78,7 +81,7 @@ class Wad3Reader:
             directories = data[dir_offset:]
 
             self.dir_entries = []
-            self.textures = {}
+            self.textures: Dict[str, TextureEntry] = {}
             for i in range(0, 32 * num_dir_entries, 32):
                 entry = DirEntry(directories[i:i+32])
                 self.dir_entries.append(entry)
@@ -93,5 +96,5 @@ class Wad3Reader:
     def __contains__(self, texture) -> bool:
         return texture.lower() in self.textures
 
-    def __getitem__(self, texture) -> Image:
+    def __getitem__(self, texture) -> Image.Image:
         return self.textures[texture.lower()].image
