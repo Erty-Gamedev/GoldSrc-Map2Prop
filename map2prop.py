@@ -28,10 +28,9 @@ class InvalidFileException(Exception):
 
 
 def main() -> None:
-    try:
-        config.parseargs()
+    if config.input:
         filename = config.input
-    except IndexError:
+    else:
         if running_as_exe:
             logger.info('Attempted to run without providing file')
             config.app_exit(2)
@@ -46,12 +45,7 @@ def main() -> None:
     filedir = filepath.parents[0]
     filename = filepath.stem
 
-    if config.output_dir is not None:
-        outputdir = config.output_dir
-    else:
-        outputdir = Path('.')
-
-    outputdir = filedir / outputdir
+    outputdir = filedir / config.output_dir
     if not outputdir.is_dir():
         outputdir.mkdir()
 
@@ -83,7 +77,7 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
-    if config is None:
+    if not config:
         logger.error('Could not parse config file, exiting...')
         exit(2)
     autoexit = config.autoexit

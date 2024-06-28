@@ -164,6 +164,7 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
         flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
         always_smooth: Dict[Vector3D, List[Vertex]] = {}
         flipped_always_smooth: Dict[Vector3D, List[Vertex]] = {}
+        
         for polygon in model.polygons:
             for vertex in polygon.vertices:
                 skip = False
@@ -270,9 +271,9 @@ triangles
                     line += (
                         "{:.6f} {:.6f} {:.6f}\t".format(v.n.x, v.n.y, v.n.z))
                     line += "{:.6f} {:.6f}".format(v.t.x, v.t.y + 1)
-                output.write(line + "\n")
+                output.write(f"{line}\n")
 
-        output.write('end' + "\n")
+        output.write("end\n")
         logger.info(f"Successfully written to {outputdir / f"{model.outname}.smd"}")
     return
 
@@ -321,12 +322,12 @@ $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
 def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
     if not config.studiomdl or not config.studiomdl.is_file():
         logger.info(
-            'Autocompile enabled, but could not proceed. '
-            + f"{config.studiomdl} was not found or is not a file.")
+            'Autocompile enabled, but could not proceed. '\
+            f"{config.studiomdl} was not found or is not a file.")
     elif filereader.missing_textures:
         logger.info(
-            'Autocompile enabled, but could not proceed. '
-            + 'Model has missing textures. Check logs for more info.')
+            'Autocompile enabled, but could not proceed. '\
+            'Model has missing textures. Check logs for more info.')
     else:
         logger.info('Autocompile enabled, compiling model...')
 
@@ -350,8 +351,8 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
             else:
                 logger.warning(compile_output)
                 logger.info(
-                    'Something went wrong. Check the compiler output '
-                    + 'above for errors.')
+                    'Something went wrong. Check the compiler output '\
+                    'above for errors.')
         except Exception:
             returncode = 1
             logger.exception('Model compilation failed with exception')
