@@ -5,6 +5,7 @@ from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
+from configutil import config
 from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
@@ -179,9 +180,12 @@ class RmfReader(BaseReader):
             faces.append(face)
         return Brush(faces)
 
-    def get_texture(self, texture: str) -> ImageInfo:
+    def get_texture(self, texture: str, name_override: str = '') -> ImageInfo:
         if texture not in self.textures:
-            texfile = self.outputdir / f"{texture}.bmp"
+            if name_override:
+                texfile = self.outputdir / f"{name_override}.bmp"
+            else:
+                texfile = self.outputdir / f"{texture}.bmp"
             if not texfile.exists():
                 raise MissingTextureException(
                     f"Could not find texture {texture}")
@@ -194,10 +198,14 @@ class RmfReader(BaseReader):
 
     def readface(self, file: BufferedReader) -> Face:
         name = read_ntstring(file, 260)
+        if config.renamechrome and 'CHROME' in name.upper():
+            name_override = name.upper().replace('CHROME', 'CHRM', 1)
+        else:
+            name_override = ''
 
         # Check if texture exists, or try to extract it if not
         if name not in self.checked:
-            if not self.wadhandler.check_texture(name):
+            if not self.wadhandler.check_texture(name, name_override):
                 self.missing_textures = True
             self.checked.append(name)
 
@@ -211,7 +219,7 @@ class RmfReader(BaseReader):
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES\
             and name.lower() not in self.wadhandler.TOOL_TEXTURES:
-            tex_image = self.get_texture(name)
+            tex_image = self.get_texture(name, name_override)
             width = tex_image.width
             height = tex_image.height
         else:
@@ -219,7 +227,7 @@ class RmfReader(BaseReader):
             height = 16
 
         texture = Texture(
-            name,
+            name_override if name_override else name,
             rightaxis, shiftx,
             downaxis, shifty,
             angle,
