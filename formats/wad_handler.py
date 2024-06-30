@@ -78,23 +78,29 @@ class WadHandler:
             self.wads[wad] = Wad3Reader(wad)
         return self.wads[wad]
 
-    def check_wads(self, texture: str) -> bool:
-        texfile = f"{texture}.bmp"
+    def check_wads(self, texture: str, filename_override: str = '') -> bool:
         for wad in self.get_wad_list():
             reader = self.get_wad_reader(wad)
             if texture in reader:
                 self.textures[texture] = reader[texture]
-                logger.info(f"""\
-Extracting {texture} from {reader.file}.""")
-                reader[texture].save(self.outputdir / texfile)
+                logger.info(f"Extracting {texture} from {reader.file}.")
+                if filename_override:
+                    logger.info(f"Saving as {filename_override}.bmp")
+                    reader[texture].save(self.outputdir / f"{filename_override}.bmp")
+                else:
+                    reader[texture].save(self.outputdir / f"{texture}.bmp")
                 return True
         return False
 
-    def check_texture(self, texture: str) -> bool:
+    def check_texture(self, texture: str, filename_override: str = '') -> bool:
         if texture.lower() in self.SKIP_TEXTURES or texture.lower() in self.TOOL_TEXTURES:
             return True
 
-        texfile = f"{texture}.bmp"
+        if filename_override:
+            texfile = f"{filename_override}.bmp"
+        else:
+            texfile = f"{texture}.bmp"
+
         check = True
         if not (self.outputdir / texfile).exists():
             if (self.filedir / texfile).exists():
@@ -104,7 +110,7 @@ Extracting {texture} from {reader.file}.""")
 Texture {texture}.bmp not found in input file's directory. \
 Searching directory for .wad packages...")
 
-                if (check := self.check_wads(texture)) is False:
+                if (check := self.check_wads(texture, filename_override)) is False:
                     logger.info(f"\
 Texture {texture} not found in neither input file's directory \
 or any .wad packages within that directory. Please place the .wad package \
