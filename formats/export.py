@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import os, subprocess
 from pathlib import Path
 import logging
@@ -148,11 +148,12 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     return models
 
 
-def vertex_in_list(vertex: Vertex, vertex_list: Dict[Vector3D, List[Vertex]]) -> bool:
+def vertex_in_list(vertex: Vertex,
+                   vertex_list: Dict[Vector3D, List[Vertex]]) -> Optional[Vector3D]:
     for other in vertex_list:
-        if vertex.v == other:
-            return True
-    return False
+        if vertex.v.eq(other):
+            return other
+    return None
 
 
 def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
@@ -188,10 +189,12 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
                 else:
                     vlist = always_smooth if should_alwayssmooth else vertices
                 
-                if not vertex_in_list(vertex, vlist):
-                    vlist[vertex.v] = [vertex]
-                else:
+                if (other := vertex_in_list(vertex, vlist)):
+                    vertex.v = other  # Merge near vertices
                     vlist[vertex.v].append(vertex)
+                else:
+                    vlist[vertex.v] = [vertex]
+                    
     
         angle_threshold = deg2rad(model.smoothing)
         smooth_near_normals(vertices, angle_threshold)
