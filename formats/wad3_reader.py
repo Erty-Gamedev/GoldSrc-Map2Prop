@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri May 26 17:18:27 2023
-
-@author: Erty
-"""
-
-
 from typing import Dict
 from pathlib import Path
 from PIL import Image
