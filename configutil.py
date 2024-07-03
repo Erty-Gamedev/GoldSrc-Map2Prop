@@ -1,26 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 30 21:59:28 2023
+Utility class for arguments and config file parsing.
 
 @author: Erty
 """
 
-from typing import Any, Union, NoReturn
+from typing import Optional, List, Self
 import os
 import sys
 import argparse
 import configparser
 import logging
+import dataclasses
 from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.9.0-beta'
+VERSION = '0.9.1-beta'
+
+
+@dataclasses.dataclass
+class Args:
+    input: Optional[str] = None
+    output: Optional[str] = None
+    game_config: Optional[str] = None
+    studiomdl: Optional[str] = None
+    wad_list: Optional[str] = None
+    wad_cache: Optional[int] = None
+    smoothing: Optional[float] = None
+    autocompile: Optional[bool] = False
+    timeout: Optional[float] = None
+    autoexit: Optional[bool] = False
+    outputname: Optional[str] = None
+    scale: Optional[float] = None
+    gamma: Optional[float] = None
+    offset: Optional[List[float]] = None
+    rotate: Optional[float] = None
+    renamechrome: Optional[bool] = False
+
+    @classmethod
+    def from_dict(cls, d: dict) -> Self:
+        fields: List[str] = [f.name for f in dataclasses.fields(cls)]
+        new_d = {}
+        for key, value in d.items():
+            if key in fields:
+                new_d[key] = value
+        return cls(**new_d)
 
 
 class ConfigUtil:
-    def __init__(self, filepath: Path):
-        self.args: Any = None
+    def __init__(self, filepath: Path) -> None:
         self.config = configparser.ConfigParser()
         if filepath.exists():
             self.config.read(filepath)
@@ -35,6 +64,8 @@ class ConfigUtil:
                 'goldsrc .smd files for model creation.',
             exit_on_error=False
         )
+
+        self.parseargs()
 
     def app_exit(self, status: int = 0, message: str = '') -> None:
         self.parser.exit(status, message)
@@ -63,9 +94,9 @@ class ConfigUtil:
             '-c', '--wad_cache', type=int, metavar='',
             help='max number of .wad files to keep in memory',)
         general.add_argument(
-            '-s', '--smoothing', type=float, default=0.0, metavar='',
-            help='angle threshold for applying smoothing '
-                 + '(use %(default)s to smooth all edges)')
+            '-s', '--smoothing', type=float, default=60.0, metavar='',
+            help='angle threshold for applying smoothing '\
+                '(use 0.0 to smooth all edges)')
         general.add_argument(
             '-a', '--autocompile', action='store_true',
             help='compile model after conversion')
@@ -92,15 +123,19 @@ class ConfigUtil:
         qc.add_argument(
             '--rotate', type=float, metavar='0.0',
             help='rotate the model by this many degrees')
+        
+        misc = self.parser.add_argument_group('misc options')
+        misc.add_argument(
+            '--renamechrome', action='store_true',
+            help='rename chrome textures (disables chrome)'
+        )
 
-        self.args = self.parser.parse_args()
-        if self.args.input is None:
-            raise IndexError()
+        self.args = Args.from_dict(vars(self.parser.parse_args()))
         self.input = self.args.input
 
     @property
     def qc_outname(self) -> str:
-        return self.args.outputname if self.args.outputname else None
+        return self.args.outputname if self.args.outputname else ''
 
     @property
     def qc_scale(self) -> float:
@@ -121,29 +156,29 @@ class ConfigUtil:
         return (270.0 + (self.args.rotate if self.args.rotate else 0.0)) % 360
 
     @property
-    def output_dir(self) -> Union[Path, None]:
+    def output_dir(self) -> Path:
         if self.args.output:
             path = self.args.output
         else:
             path = self.config['AppConfig'].get('output directory', None)
-        return path if path is None else Path(path)
+        return Path(path) if path else Path('.')
 
     @property
     def game_config(self) -> str:
         if self.args.game_config:
             return self.args.game_config
-        return self.config['AppConfig'].get('game config', None)
+        return self.config['AppConfig'].get('game config', '')
 
     @property
-    def studiomdl(self) -> Union[Path, None]:
+    def studiomdl(self) -> Optional[Path]:
         if self.args.studiomdl:
             return Path(self.args.studiomdl)
         if studiomdl := (self.config['AppConfig'].get('studiomdl', None)):
-            return Path(studiomdl)
+            return Path(studiomdl) if studiomdl else None
         return None
 
     @property
-    def mod_path(self) -> Union[Path, None]:
+    def mod_path(self) -> Optional[Path]:
         game = self.game_config
         steamdir = self.config['AppConfig'].get('steam directory', None)
 
@@ -172,7 +207,7 @@ class ConfigUtil:
 
     @property
     def autocompile(self) -> bool:
-        return (self.args.autocompile
+        return bool(self.args.autocompile
                 or self.config['AppConfig'].getboolean('autocompile', False))
 
     @property
@@ -183,7 +218,7 @@ class ConfigUtil:
 
     @property
     def autoexit(self) -> bool:
-        if self.args and self.args.autoexit:
+        if self.args.autoexit:
             return self.args.autoexit
         return self.config['AppConfig'].getboolean('autoexit', False)
 
@@ -197,17 +232,23 @@ class ConfigUtil:
         if self.args.smoothing:
             return self.args.smoothing
         return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
+    
+    @property
+    def renamechrome(self) -> bool:
+        return bool(self.args.renamechrome
+                    or self.config['AppConfig'].getboolean('rename chrome', False))
 
     def create_default_config(self):
         self.config['AppConfig'] = {
             'smoothing': 'no',
             'smoothing threshold': 60.0,
+            'rename chrome': 'no',
             'output directory': r'/converted',
             'steam directory': r'C:/Program Files (x86)/Steam',
             'game config': 'halflife',
             'wad cache': 10,
-            'studiomdl': (r'%(steam directory)s/steamapps/common'
-                          + r'/Sven Co-op SDK/modelling/studiomdl.exe'),
+            'studiomdl': (r'%(steam directory)s/steamapps/common'\
+                          r'/Sven Co-op SDK/modelling/studiomdl.exe'),
             'autocompile': 'yes',
             'autoexit': 'no',
             'timeout': 60.0,
@@ -237,8 +278,8 @@ try:
     config: ConfigUtil = ConfigUtil(Path(app_dir) / 'config.ini')
 except configparser.DuplicateOptionError as e:
     logger.exception('Config file parsing failed.')
-    logger.info('If using wad_list in config.ini, make sure each '
-                + "consequtive line is left-aligned with the first line.\n")
+    logger.info('If using wad_list in config.ini, make sure each '\
+                "consequtive line is left-aligned with the first line.\n")
     raise e
 except Exception as e:
     logger.exception('Config file parsing failed.')

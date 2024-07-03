@@ -1,13 +1,13 @@
 
 @SolidClass = func_map2prop : "Brushes for Map2Prop to turn into a model" 
 [
-    spawnflags(flags) =
+	spawnflags(flags) =
 	[
 		1 : "Disable" : 0
 		// 2 : "Is submodel" : 0
 	]
 
-    targetname(string) : "Name"
+	targetname(string) : "Name"
 	outname(string) : "Exported model's name"
 	outdir(string) : "Exported model subfolder"
 	gamma(string) : "Gamma (default 1.8)" : "1.8"
@@ -17,8 +17,13 @@
 	// parent_model(string) : "Template prop"
 	own_model(choices) : "Export as its own model" : 1 =
 	[
-    	0: "No"
-    	1: "Yes"
+		0: "No"
+		1: "Yes"
+	]
+	chrome(choices) : "Chrome setting override" : 0 =
+	[
+		0: "Default"
+		1: "Rename chrome textures (disable chrome)"
 	]
 	// convert_to(choices) : "Classname after conversion" : 0 =
 	// [

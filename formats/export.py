@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import os, subprocess
+from shutil import copy2
 from pathlib import Path
 import logging
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ class RawModel:
     scale: float
     rotation: float
     maskedtextures: List[str]
+    rename_chrome: bool
 
 
 def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
@@ -35,6 +37,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 
     n = 0
     for entity in filereader.entities:
+        if not entity.brushes:
+            continue
         outname = filename
         own_model = False
 
@@ -53,6 +57,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         scale = config.qc_scale
         rotation = config.qc_rotate
         smoothing = config.smoothing_treshhold
+        chrome = config.renamechrome
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
                 scale = float(entity.properties['scale'])
@@ -65,6 +70,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             if 'smoothing' in entity.properties:
                 smoothing = float(entity.properties['smoothing'])
+            
+            if 'chrome' in entity.properties:
+                chrome = int(entity.properties['chrome']) == 1
 
         if outname not in models:
             models[outname] = RawModel(
@@ -79,6 +87,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 scale=scale,
                 rotation=rotation,
                 maskedtextures=[],
+                rename_chrome=chrome
             )
 
         origin_found: bool = False
@@ -148,14 +157,15 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     return models
 
 
-def vertex_in_list(vertex: Vertex, vertex_list: Dict[Vector3D, List[Vertex]]) -> bool:
+def vertex_in_list(vertex: Vertex,
+                   vertex_list: Dict[Vector3D, List[Vertex]]) -> Optional[Vector3D]:
     for other in vertex_list:
-        if vertex.v == other:
-            return True
-    return False
+        if vertex.v.eq(other):
+            return other
+    return None
 
 
-def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
+def apply_smooth(models: Dict[str, RawModel]) -> None:
     for model in models.values():
         if model.smoothing == 0.0:
             continue
@@ -164,6 +174,7 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
         flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
         always_smooth: Dict[Vector3D, List[Vertex]] = {}
         flipped_always_smooth: Dict[Vector3D, List[Vertex]] = {}
+        
         for polygon in model.polygons:
             for vertex in polygon.vertices:
                 skip = False
@@ -187,10 +198,12 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
                 else:
                     vlist = always_smooth if should_alwayssmooth else vertices
                 
-                if not vertex_in_list(vertex, vlist):
-                    vlist[vertex.v] = [vertex]
-                else:
+                if (other := vertex_in_list(vertex, vlist)):
+                    vertex.v = other  # Merge near vertices
                     vlist[vertex.v].append(vertex)
+                else:
+                    vlist[vertex.v] = [vertex]
+                    
     
         angle_threshold = deg2rad(model.smoothing)
         smooth_near_normals(vertices, angle_threshold)
@@ -198,12 +211,37 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
         smooth_all_normals(always_smooth)
         smooth_all_normals(flipped_always_smooth)
 
+
+def rename_chrome(models: Dict[str, RawModel], outputdir: Path) -> None:
+    for model in models.values():
+        if not model.rename_chrome:
+            continue
+
+        for polygon in model.polygons:
+            if 'CHROME' not in polygon.texture.upper():
+                continue
+            
+            texture_filepath = outputdir / f"{polygon.texture}.bmp"
+            if not texture_filepath.exists():
+                FileNotFoundError(f"Could not find {texture_filepath}")
+            
+            new_name = polygon.texture.upper().replace('CHROME', 'CHRM')
+            new_filepath = outputdir / f"{new_name}.bmp"
+
+            if not new_filepath.exists():
+                copy2(texture_filepath, new_filepath)
+
+            polygon.texture = new_name
+
     return models
 
 
 def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
     models = prepare_models(filename, filereader)
-    models = apply_smooth(models)
+
+    apply_smooth(models)
+    rename_chrome(models, outputdir)
+
     processed = [m for m in models.values() if m.polygons]
     num_models = len(models)
 
@@ -270,9 +308,9 @@ triangles
                     line += (
                         "{:.6f} {:.6f} {:.6f}\t".format(v.n.x, v.n.y, v.n.z))
                     line += "{:.6f} {:.6f}".format(v.t.x, v.t.y + 1)
-                output.write(line + "\n")
+                output.write(f"{line}\n")
 
-        output.write('end' + "\n")
+        output.write("end\n")
         logger.info(f"Successfully written to {outputdir / f"{model.outname}.smd"}")
     return
 
@@ -321,12 +359,12 @@ $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
 def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
     if not config.studiomdl or not config.studiomdl.is_file():
         logger.info(
-            'Autocompile enabled, but could not proceed. '
-            + f"{config.studiomdl} was not found or is not a file.")
+            'Autocompile enabled, but could not proceed. '\
+            f"{config.studiomdl} was not found or is not a file.")
     elif filereader.missing_textures:
         logger.info(
-            'Autocompile enabled, but could not proceed. '
-            + 'Model has missing textures. Check logs for more info.')
+            'Autocompile enabled, but could not proceed. '\
+            'Model has missing textures. Check logs for more info.')
     else:
         logger.info('Autocompile enabled, compiling model...')
 
@@ -350,8 +388,8 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
             else:
                 logger.warning(compile_output)
                 logger.info(
-                    'Something went wrong. Check the compiler output '
-                    + 'above for errors.')
+                    'Something went wrong. Check the compiler output '\
+                    'above for errors.')
         except Exception:
             returncode = 1
             logger.exception('Model compilation failed with exception')
