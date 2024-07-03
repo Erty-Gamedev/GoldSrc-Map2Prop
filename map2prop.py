@@ -32,7 +32,7 @@ def main() -> None:
         filename = config.input
     else:
         if running_as_exe:
-            logger.info('Attempted to run without providing file')
+            logger.info('Please drag-and-drop a file onto the executable')
             config.app_exit(2)
         else:
             filename = r'test/cratetest.obj'
