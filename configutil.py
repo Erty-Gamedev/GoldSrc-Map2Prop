@@ -5,13 +5,13 @@ Utility class for arguments and config file parsing.
 @author: Erty
 """
 
-from typing import Optional, List
+from typing import Optional, List, Self
 import os
 import sys
 import argparse
 import configparser
 import logging
-from dataclasses import dataclass
+import dataclasses
 from logutil import shutdown_logger
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from pathlib import Path
 VERSION = '0.9.0-beta'
 
 
-@dataclass
+@dataclasses.dataclass
 class Args:
     input: Optional[str] = None
     output: Optional[str] = None
@@ -36,6 +36,16 @@ class Args:
     gamma: Optional[float] = None
     offset: Optional[List[float]] = None
     rotate: Optional[float] = None
+    renamechrome: Optional[bool] = False
+
+    @classmethod
+    def from_dict(cls, d: dict) -> Self:
+        fields: List[str] = [f.name for f in dataclasses.fields(cls)]
+        new_d = {}
+        for key, value in d.items():
+            if key in fields:
+                new_d[key] = value
+        return cls(**new_d)
 
 
 class ConfigUtil:
@@ -119,6 +129,8 @@ class ConfigUtil:
             '--renamechrome', action='store_true',
             help='rename chrome textures (disables chrome)'
         )
+
+        self.args = Args.from_dict(vars(self.parser.parse_args()))
         self.input = self.args.input
 
     @property
