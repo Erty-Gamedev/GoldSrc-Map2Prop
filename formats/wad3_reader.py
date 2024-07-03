@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri May 26 17:18:27 2023
-
-@author: Erty
-"""
-
-
 from typing import Dict
 from pathlib import Path
 from PIL import Image
@@ -93,8 +86,8 @@ class Wad3Reader:
                 )
                 self.textures[texture.name.lower()] = texture
 
-    def __contains__(self, texture) -> bool:
+    def __contains__(self, texture: str) -> bool:
         return texture.lower() in self.textures
 
-    def __getitem__(self, texture) -> Image.Image:
+    def __getitem__(self, texture: str) -> Image.Image:
         return self.textures[texture.lower()].image
