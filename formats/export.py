@@ -37,6 +37,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 
     n = 0
     for entity in filereader.entities:
+        if not entity.brushes:
+            continue
         outname = filename
         own_model = False
 
