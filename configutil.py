@@ -113,8 +113,12 @@ class ConfigUtil:
         qc.add_argument(
             '--rotate', type=float, metavar='0.0',
             help='rotate the model by this many degrees')
-
-        self.args = Args(**vars(self.parser.parse_args()))
+        
+        misc = self.parser.add_argument_group('misc options')
+        misc.add_argument(
+            '--renamechrome', action='store_true',
+            help='rename chrome textures (disables chrome)'
+        )
         self.input = self.args.input
 
     @property
@@ -216,11 +220,17 @@ class ConfigUtil:
         if self.args.smoothing:
             return self.args.smoothing
         return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
+    
+    @property
+    def renamechrome(self) -> bool:
+        return bool(self.args.renamechrome
+                    or self.config['AppConfig'].getboolean('rename chrome', False))
 
     def create_default_config(self):
         self.config['AppConfig'] = {
             'smoothing': 'no',
             'smoothing threshold': 60.0,
+            'rename chrome': 'no',
             'output directory': r'/converted',
             'steam directory': r'C:/Program Files (x86)/Steam',
             'game config': 'halflife',

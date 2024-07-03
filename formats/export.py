@@ -2,6 +2,7 @@
 
 from typing import Dict, List, Tuple, Optional
 import os, subprocess
+from shutil import copy2
 from pathlib import Path
 import logging
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ class RawModel:
     scale: float
     rotation: float
     maskedtextures: List[str]
+    rename_chrome: bool
 
 
 def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
@@ -53,6 +55,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         scale = config.qc_scale
         rotation = config.qc_rotate
         smoothing = config.smoothing_treshhold
+        chrome = config.renamechrome
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
                 scale = float(entity.properties['scale'])
@@ -65,6 +68,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             if 'smoothing' in entity.properties:
                 smoothing = float(entity.properties['smoothing'])
+            
+            if 'chrome' in entity.properties:
+                chrome = int(entity.properties['chrome']) == 1
 
         if outname not in models:
             models[outname] = RawModel(
@@ -79,6 +85,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 scale=scale,
                 rotation=rotation,
                 maskedtextures=[],
+                rename_chrome=chrome
             )
 
         origin_found: bool = False
@@ -156,7 +163,7 @@ def vertex_in_list(vertex: Vertex,
     return None
 
 
-def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
+def apply_smooth(models: Dict[str, RawModel]) -> None:
     for model in models.values():
         if model.smoothing == 0.0:
             continue
@@ -202,12 +209,37 @@ def apply_smooth(models: Dict[str, RawModel]) -> Dict[str, RawModel]:
         smooth_all_normals(always_smooth)
         smooth_all_normals(flipped_always_smooth)
 
+
+def rename_chrome(models: Dict[str, RawModel], outputdir: Path) -> None:
+    for model in models.values():
+        if not model.rename_chrome:
+            continue
+
+        for polygon in model.polygons:
+            if 'CHROME' not in polygon.texture.upper():
+                continue
+            
+            texture_filepath = outputdir / f"{polygon.texture}.bmp"
+            if not texture_filepath.exists():
+                FileNotFoundError(f"Could not find {texture_filepath}")
+            
+            new_name = polygon.texture.upper().replace('CHROME', 'CHRM')
+            new_filepath = outputdir / f"{new_name}.bmp"
+
+            if not new_filepath.exists():
+                copy2(texture_filepath, new_filepath)
+
+            polygon.texture = new_name
+
     return models
 
 
 def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
     models = prepare_models(filename, filereader)
-    models = apply_smooth(models)
+
+    apply_smooth(models)
+    rename_chrome(models, outputdir)
+
     processed = [m for m in models.values() if m.polygons]
     num_models = len(models)
 
