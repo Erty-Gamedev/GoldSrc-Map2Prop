@@ -22,21 +22,22 @@ VERSION = '0.9.1-beta'
 @dataclasses.dataclass
 class Args:
     """To help with typing"""
-    input: Optional[str] = None
-    output: Optional[str] = None
-    game_config: Optional[str] = None
-    studiomdl: Optional[str] = None
-    wad_list: Optional[str] = None
-    wad_cache: Optional[int] = None
-    smoothing: Optional[float] = None
-    autocompile: Optional[bool] = None
-    timeout: Optional[float] = None
-    autoexit: Optional[bool] = None
-    outputname: Optional[str] = None
-    scale: Optional[float] = None
-    gamma: Optional[float] = None
-    offset: Optional[List[float]] = None
-    rotate: Optional[float] = None
+    input:        Optional[str] = None
+    output:       Optional[str] = None
+    mapcompile:   bool = False
+    game_config:  Optional[str] = None
+    studiomdl:    Optional[str] = None
+    wad_list:     Optional[str] = None
+    wad_cache:    Optional[int] = None
+    smoothing:    Optional[float] = None
+    autocompile:  Optional[bool] = None
+    timeout:      Optional[float] = None
+    autoexit:     Optional[bool] = None
+    outputname:   Optional[str] = None
+    scale:        Optional[float] = None
+    gamma:        Optional[float] = None
+    offset:       Optional[List[float]] = None
+    rotate:       Optional[float] = None
     renamechrome: Optional[bool] = None
 
     @classmethod
@@ -55,6 +56,7 @@ class ConfigUtil:
 
         self._input:         Optional[str] = None
         self._output:        Path = Path('.')
+        self._mapcompile:    bool = False
         self._game_config:   str = ''
         self._studiomdl:     Optional[Path] = None
         self._wad_list:      List[Path] = []
@@ -104,6 +106,10 @@ class ConfigUtil:
             '-o', '--output', type=str, metavar='',
             help='specify an output directory')
         general.add_argument(
+            '-c', '--mapcompile', action='store_true',
+            help='modify .map input to replace func_map2prop with model entities after compile'
+        )
+        general.add_argument(
             '-g', '--game_config', type=str, metavar='',
             help='game setup to use from config.ini')
         general.add_argument(
@@ -113,7 +119,7 @@ class ConfigUtil:
             '-w', '--wad_list', type=str, metavar='',
             help='path to text file listing .wad files')
         general.add_argument(
-            '-c', '--wad_cache', type=int, metavar='',
+            '-n', '--wad_cache', type=int, metavar='',
             help='max number of .wad files to keep in memory',)
         general.add_argument(
             '-s', '--smoothing', type=float, default=60.0, metavar='',
@@ -172,6 +178,8 @@ class ConfigUtil:
         else:
             self._output = Path(configini.get('output directory', '.'))
 
+        self._mapcompile = self.args.mapcompile
+
         if self.args.studiomdl:
             self._studiomdl = Path(self.args.studiomdl)
         elif studiomdl := (configini.get('studiomdl', None)):
@@ -202,7 +210,7 @@ class ConfigUtil:
         else:
             self._timeout = configini.getfloat('timeout', 60.0)
         
-        self._autoexit = self.args.autoexit or configini.getboolean('autoexit', False) 
+        self._autoexit = self.mapcompile or self.args.autoexit or configini.getboolean('autoexit', False) 
         
         self._qc_outputname = self.args.outputname if self.args.outputname else ''
 
@@ -222,6 +230,8 @@ class ConfigUtil:
     def input(self) -> Optional[str]: return self._input
     @property
     def output_dir(self) -> Path: return self._output
+    @property
+    def mapcompile(self) -> bool: return self._mapcompile
     @property
     def game_config(self) -> str: return self._game_config
     @property
