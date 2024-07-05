@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Final
 import os, subprocess
 from shutil import copy2
 from pathlib import Path
@@ -9,12 +9,22 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
+from formats.map_reader import MapReader, Entity
 from geoutil import (Polygon, Vertex, Vector3D,
                      flip_faces, deg2rad, point_in_bounds,
                      smooth_near_normals, smooth_all_normals)
 
 logger = logging.getLogger(__name__)
 
+
+CONVERT_TO_MAPPING: Final[Dict[int, str]] = {
+    0: 'cycler',
+    1: 'cycler_sprite',
+    2: 'env_sprite',
+    3: 'item_generic',
+    4: 'monster_furniture',
+    5: 'monster_generic',
+}
 
 @dataclass
 class RawModel:
@@ -39,6 +49,10 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
     for entity in filereader.entities:
         if not entity.brushes:
             continue
+
+        if config.mapcompile and entity.classname != 'func_map2prop':
+            continue
+
         outname = filename
         own_model = False
 
@@ -56,6 +70,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                         outname = f"{outname}_{n}"
                         n += 1
         
+            entity.properties['model'] = f"models/{config.output_dir}/{outname}.mdl"
+
         scale = config.qc_scale
         rotation = config.qc_rotate
         smoothing = config.smoothing
@@ -106,7 +122,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                                 f"near {brush.center}")
                     continue
                 if entity.classname == 'worldspawn' or own_model:
-                    models[outname].offset = brush.center
+                    ori = brush.center
+                    models[outname].offset = ori
+                    entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
                 origin_found = True
                 continue  # Don't add brush
 
@@ -235,10 +253,10 @@ def rename_chrome(models: Dict[str, RawModel], outputdir: Path) -> None:
 
             polygon.texture = new_name
 
-    return models
+    return None
 
 
-def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
+def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> int:
     models = prepare_models(filename, filereader)
 
     apply_smooth(models)
@@ -249,7 +267,7 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
 
     if not num_models:
         logger.info(f"No props found in {filename}")
-        return
+        return 1
     if num_models == 1:
         logger.info(f"{filename} prepared.")
     else:
@@ -276,6 +294,8 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
         else:
             logger.info('Something went wrong during model compilation, check the logs.')
             logger.info(f"The following models did not compile: {', '.join(failed)}")
+    
+    return returncodes
 
 
 def write_smd(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
@@ -399,3 +419,69 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
             
         os.chdir(current_dir)
     return returncode
+
+    
+def rewrite_map(filepath: Path, filereader: MapReader) -> None:
+    filedir = filepath.parent
+    filename = filepath.stem
+
+    # Create a backup
+    copy2(filepath, filedir / f"{filename}.m2p")
+
+    # Not a true edict as we all know and love.
+    # It is just to map func_map2prop entities to their targetnames
+    edict: Dict[str, Entity] = {}
+    for entity in filereader.entities:
+        if entity.classname != 'func_map2prop':
+            continue
+
+        if not 'targetname' in entity.properties or not entity.properties['targetname']:
+            continue
+        
+        if entity.properties['targetname'] in edict:
+            logger.info('Naming conflict: Multiple func_map2prop '\
+                        f"entities with name '{entity.properties['targetname']}'")
+            continue
+        
+        # Reset entity angles, as they're baked into the model now
+        entity.properties['angles'] = '0 0 0'
+
+        edict[entity.properties['targetname']] = entity
+    
+    # Convert func_map2prop entities
+    with filepath.open('w') as file:
+        for entity in filereader.entities:
+            if entity.classname != 'func_map2prop':
+                file.write(entity.raw)
+                continue
+
+            kvs = entity.properties
+
+            if 'parent_model' in kvs and kvs['parent_model']:
+                parent_model = kvs['parent_model']
+                if parent_model not in edict:
+                    logger.info(f"Entity with invalid template parent near {kvs['origin']}")
+                
+                parent = edict[parent_model]
+                kvs['model'] = parent.properties['model']
+            
+            new_class = 'env_sprite'
+            if 'convert_to' in kvs and kvs['convert_to']:
+                convert_to = kvs['convert_to']
+                if convert_to.isdigit() and int(convert_to) in CONVERT_TO_MAPPING:
+                    new_class = CONVERT_TO_MAPPING[int(convert_to)]
+                else:
+                    new_class = convert_to
+            
+            new_raw = "{\n" f"\"classname\" \"{new_class}\"\n"\
+                f"\"model\" \"{kvs['model']}\"\n"
+            if 'angles' in kvs and kvs['angles']:
+                new_raw += f"\"angles\" \"{kvs['angles']}\"\n"
+            if 'origin' in kvs and kvs['origin']:
+                new_raw += f"\"origin\" \"{kvs['origin']}\"\n"
+            new_raw += "}\n"
+
+            file.write(new_raw)
+
+    return None
+
