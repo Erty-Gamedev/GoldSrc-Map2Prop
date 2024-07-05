@@ -109,7 +109,7 @@ class MapReader(BaseReader):
                 key, value = keyvalue[1].strip(), keyvalue[3].strip()
 
                 if key == 'classname':
-                    classname = value
+                    classname = value.lower()
                 elif key == 'wad' and classname == 'worldspawn':
                     self.wadhandler.set_wadlist(value.split(';'))
 
