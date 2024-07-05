@@ -14,7 +14,7 @@
 	smoothing(string) : "Smoothing threshold (0 disables)" : "60.0"
 	scale(string) : "Scale" : "1.0"
 	rotate(string) : "Rotate" : "0.0"
-	// parent_model(string) : "Template prop"
+	parent_model(string) : "Template prop"
 	own_model(choices) : "Export as its own model" : 1 =
 	[
 		0: "No"
