@@ -42,7 +42,7 @@ def main() -> None:
     filepath = Path(filename)
     extension = filepath.suffix.lower()
 
-    filedir = filepath.parents[0]
+    filedir = filepath.parent
     filename = filepath.stem
 
     outputdir = filedir / config.output_dir
@@ -63,12 +63,11 @@ def main() -> None:
         from formats.map_reader import MapReader
         filereader = MapReader(filepath, outputdir)
     else:
-        logger.info(
-            'Invalid file type. Must be .obj, .rmf, or .jmf, but '
-            + f"was {filepath.suffix}")
+        logger.info('Invalid file type. Must be .map, .obj, .rmf, or .jmf, '\
+                f"but was {extension}")
         raise InvalidFileException(
-            'File type must be .obj, .rmf, or .jmf!')
-    
+            'File type must be .map, .obj, .rmf, or .jmf!')
+
     process_models(filename, outputdir, filereader)
 
 
