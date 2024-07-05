@@ -45,6 +45,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         if entity.classname == 'func_map2prop':
             if 'spawnflags' in entity.properties and (int(entity.properties['spawnflags']) & 1):
                 continue  # Model is disabled
+            if 'parent_model' in entity.properties and entity.properties['parent_model']:
+                continue  # Entity uses a template, model is defined in parent
             if 'own_model' in entity.properties and entity.properties['own_model'] == '1':
                 own_model = True
                 outname = f"{filename}_{n}"
