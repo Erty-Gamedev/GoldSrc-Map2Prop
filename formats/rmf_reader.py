@@ -5,7 +5,6 @@ from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
-from configutil import config
 from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,

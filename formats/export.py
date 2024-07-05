@@ -56,7 +56,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         
         scale = config.qc_scale
         rotation = config.qc_rotate
-        smoothing = config.smoothing_treshhold
+        smoothing = config.smoothing
         chrome = config.renamechrome
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
@@ -325,7 +325,8 @@ def write_qc(model: RawModel, outputdir: Path) -> None:
 
         if model.offset != Vector3D.zero():
             offset = f"{model.offset.x} {model.offset.y} {model.offset.z}"
-        else: offset = config.qc_offset
+        else:
+            offset = config.qc_offset
 
         bbox = ''
         if model.bounds != (Vector3D.zero(), Vector3D.zero()):
