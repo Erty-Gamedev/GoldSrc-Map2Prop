@@ -61,7 +61,11 @@ class Brush(BaseBrush):
     pass
 
 class Entity(BaseEntity):
-    pass
+    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush], raw: str):
+        super().__init__(classname, properties, brushes)
+        self._raw = raw
+    @property
+    def raw(self) -> str: return self._raw
 
 
 class MapReader(BaseReader):
@@ -90,8 +94,12 @@ class MapReader(BaseReader):
         classname = ''
         properties: Dict[str, str] = {}
         brushes: List[Brush] = []
+        raw = "{\n"
 
-        while line := file.readline().strip():
+        while line := file.readline():
+            raw += line
+            line = line.strip()
+
             if line.startswith('//'):  # skip comments
                 continue
             elif line.startswith('"'):  # read keyvalues
@@ -107,18 +115,23 @@ class MapReader(BaseReader):
 
                 properties[key] = value
             elif line.startswith('{'):
-                brush = self.readbrush(file)
+                brush, rawbrush = self.readbrush(file)
                 brushes.append(brush)
+                raw += rawbrush
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected entity data: {line}")
-        return Entity(classname, properties, brushes)
+        return Entity(classname, properties, brushes, raw)
 
-    def readbrush(self, file: TextIOWrapper) -> Brush:
+    def readbrush(self, file: TextIOWrapper) -> Tuple[Brush, str]:
         planes: List[Plane] = []
+        raw = ''
 
-        while line := file.readline().strip():
+        while line := file.readline():
+            raw += line
+            line = line.strip()
+
             if line.startswith('//'):
                 continue
             elif line.startswith('('):
@@ -130,7 +143,7 @@ class MapReader(BaseReader):
 
         faces = self.faces_from_planes(planes)
 
-        return Brush(faces)
+        return Brush(faces), raw
     
     def readplane(self, line: str) -> Plane:
         parts = line.split()
