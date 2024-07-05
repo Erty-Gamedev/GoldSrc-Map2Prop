@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Dict, Tuple
 from PIL import Image
 from pathlib import Path

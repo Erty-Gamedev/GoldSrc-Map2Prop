@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, OrderedDict, Dict, Union
 from pathlib import Path
 from collections import OrderedDict

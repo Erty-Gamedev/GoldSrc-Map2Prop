@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
 Utility class for arguments and config file parsing.
-
-@author: Erty
 """
 
 from typing import Optional, List, Self

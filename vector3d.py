@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-@author: Erty
+3-Dimensional Vector class
 """
 
 from typing import Union, TypeAlias, Final

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Tuple, Union, Generator
 from vector3d import Vector3D
 from itertools import chain

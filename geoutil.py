@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
 Geometric functions and classes
-
-@author: Erty
 """
 
 from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final

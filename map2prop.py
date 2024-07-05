@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
 """
 GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files,
 as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that
 can then be compiled into a GoldSrc format studio model
 without the hassle of using an 3D editor.
-
-@author: Erty
 """
 
 from typing import Final

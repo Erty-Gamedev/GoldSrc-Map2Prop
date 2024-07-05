@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import Dict, List, Tuple, Optional, Final
 import os, subprocess
 from shutil import copy2

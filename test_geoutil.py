@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-@author: Erty
+Tests for geometric functions
 """
 
 import unittest
