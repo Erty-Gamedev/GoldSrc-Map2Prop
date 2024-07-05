@@ -25,13 +25,13 @@
 		0: "Default"
 		1: "Rename chrome textures (disable chrome)"
 	]
-	// convert_to(choices) : "Classname after conversion" : 0 =
-	// [
-	// 	0: "cycler"
-	// 	1: "cycler_sprite"
-	// 	2: "env_sprite"
-	// 	3: "item_generic"
-	// 	4: "monster_furniture"
-	// 	5: "monster_generic"
-	// ]
+	convert_to(choices) : "Classname after conversion" : 0 =
+	[
+		0: "cycler"
+		1: "cycler_sprite"
+		2: "env_sprite"
+		3: "item_generic"
+		4: "monster_furniture"
+		5: "monster_generic"
+	]
 ]
