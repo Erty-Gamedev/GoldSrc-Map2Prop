@@ -42,10 +42,27 @@ def main() -> None:
     filepath = Path(filename)
     extension = filepath.suffix.lower()
 
+    if extension.strip() == '' and Path(f"{filename}.map").exists():
+        filepath = Path(f"{filename}.map")
+        extension = '.map'
+
+    if config.mapcompile and extension != '.map':
+        raise InvalidFileException('Invalid file type. '\
+                                   '--mapcompile can only be used with .map, '\
+                                    f"but file was {extension}")
+
     filedir = filepath.parent
     filename = filepath.stem
 
-    outputdir = filedir / config.output_dir
+    if config.mapcompile:
+        if not config.mod_path or not config.mod_path.exists():
+            raise NotADirectoryError('Mod folder not configured or does not exist '\
+                        f" for game config '{config.game_config}'. "\
+                        'Check config.ini')
+
+        outputdir = (config.mod_path / 'models') / config.output_dir
+    else:
+        outputdir = filedir / config.output_dir
     if not outputdir.is_dir():
         outputdir.mkdir()
 
