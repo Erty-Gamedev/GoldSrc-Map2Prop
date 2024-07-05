@@ -16,7 +16,7 @@ from logutil import setup_logger, shutdown_logger
 from configutil import config
 from formats import MissingTextureException
 from formats.base_classes import BaseReader
-from formats.export import process_models
+from formats.export import process_models, rewrite_map
 
 
 enter_to_exit = 'Press Enter to exit...'
@@ -68,7 +68,14 @@ def main() -> None:
         raise InvalidFileException(
             'File type must be .map, .obj, .rmf, or .jmf!')
 
-    process_models(filename, outputdir, filereader)
+    returncode = process_models(filename, outputdir, filereader)
+
+    if config.mapcompile:
+        if returncode > 0:
+            config.app_exit(3,'Something went wrong while compiling the models. '\
+                            'Check the logs')
+        else:
+            rewrite_map(filepath, filereader)
 
 
 if __name__ == '__main__':
@@ -79,7 +86,6 @@ if __name__ == '__main__':
     if not config:
         logger.error('Could not parse config file, exiting...')
         exit(2)
-    autoexit = config.autoexit
 
     try:
         main()
@@ -89,6 +95,6 @@ if __name__ == '__main__':
         logger.exception(str(e))
         config.app_exit(1, str(e))
     finally:
-        if running_as_exe and not autoexit:
+        if running_as_exe and not config.autoexit:
             input(enter_to_exit)
         shutdown_logger(logger)
