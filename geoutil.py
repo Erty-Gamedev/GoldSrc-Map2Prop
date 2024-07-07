@@ -277,14 +277,9 @@ def intersection_3planes(p1: HessianPlane,
     ) / denominator
 
 
-def geometric_center(vertices: List[Vector3D]) -> Vector3D:
+def geometric_center(vectors: List[Vector3D]) -> Vector3D:
     """Returns the geometric center of the given vertices"""
-    center = Vector3D(0, 0, 0)
-
-    for vertex in vertices:
-        center += vertex
-
-    return center / len(vertices)
+    return sum_vectors(vectors) / len(vectors)
 
 
 def bounds_from_points(points: List[Vector3D]) -> Bounds:
