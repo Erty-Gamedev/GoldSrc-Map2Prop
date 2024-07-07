@@ -8,7 +8,7 @@ from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
 from formats.map_reader import MapReader, Entity
-from geoutil import (Polygon, Vertex, Vector3D,
+from geoutil import (Polygon, Vertex, Vector3D, geometric_center,
                      flip_faces, deg2rad, point_in_bounds,
                      smooth_near_normals, smooth_all_normals)
 
@@ -58,7 +58,16 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             if 'spawnflags' in entity.properties and (int(entity.properties['spawnflags']) & 1):
                 continue  # Model is disabled
             if 'parent_model' in entity.properties and entity.properties['parent_model']:
-                continue  # Entity uses a template, model is defined in parent
+                # Entity uses a template, model is defined in parent.
+                # We can still find its origin to store it on the entity.
+                for brush in entity.brushes:
+                    if not brush.all_points: continue  # Skip empty brushes
+
+                    if brush.is_tool_brush('origin'):
+                        ori = geometric_center(brush.bounds)
+                        entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
+                        break
+                continue  # Don't need to do anything else
             if 'own_model' in entity.properties and entity.properties['own_model'] == '1':
                 own_model = True
                 outname = f"{filename}_{n}"
@@ -120,7 +129,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                                 f"near {brush.center}")
                     continue
                 if entity.classname == 'worldspawn' or own_model:
-                    ori = brush.center
+                    ori = geometric_center(brush.bounds)
                     models[outname].offset = ori
                     entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
                 origin_found = True
