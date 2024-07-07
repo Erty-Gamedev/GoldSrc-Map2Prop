@@ -66,7 +66,7 @@ class ConfigUtil:
         self._qc_scale:      float = 1.0
         self._qc_gamma:      float = 1.8
         self._qc_offset:     str = '0 0 0'
-        self._qc_rotate:     float = 0.0
+        self._qc_rotate:     float = 270.0
         self._renamechrome:  Optional[bool] = None
 
         self.load_configini()
