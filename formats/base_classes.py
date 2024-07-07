@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base classes for map file readers and map objects
 """

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-@author: Erty
+Utility class to set up logging
 """
 
 from typing import Final, Dict, Any

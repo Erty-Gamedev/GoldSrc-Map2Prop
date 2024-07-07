@@ -9,12 +9,11 @@
 
 	targetname(string) : "Name"
 	outname(string) : "Exported model's name"
-	outdir(string) : "Exported model subfolder"
+	subdir(string) : "Exported model subfolder"
 	gamma(string) : "Gamma (default 1.8)" : "1.8"
 	smoothing(string) : "Smoothing threshold (0 disables)" : "60.0"
 	scale(string) : "Scale" : "1.0"
-	rotate(string) : "Rotate" : "0.0"
-	// parent_model(string) : "Template prop"
+	parent_model(string) : "Template prop"
 	own_model(choices) : "Export as its own model" : 1 =
 	[
 		0: "No"
@@ -25,13 +24,13 @@
 		0: "Default"
 		1: "Rename chrome textures (disable chrome)"
 	]
-	// convert_to(choices) : "Classname after conversion" : 0 =
-	// [
-	// 	0: "cycler"
-	// 	1: "cycler_sprite"
-	// 	2: "env_sprite"
-	// 	3: "item_generic"
-	// 	4: "monster_furniture"
-	// 	5: "monster_generic"
-	// ]
+	convert_to(choices) : "Classname after conversion" : 0 =
+	[
+		0: "cycler"
+		1: "cycler_sprite"
+		2: "env_sprite"
+		3: "item_generic"
+		4: "monster_furniture"
+		5: "monster_generic"
+	]
 ]

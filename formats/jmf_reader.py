@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Dict, Tuple
 from PIL import Image
 from pathlib import Path
 from io import BufferedReader
 from dataclasses import dataclass
 from vector3d import Vector3D
-from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face
+from triangulate.triangulate import triangulate
+from geoutil import Polygon, Vertex, ImageInfo, Texture
 from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
@@ -42,7 +41,7 @@ class Face(BaseFace):
             ))
             self._points.append(Vector3D(*face_vertex.vertex))
         
-        for triangle in triangulate_face(self._points):
+        for triangle in triangulate(self._points):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:
@@ -68,7 +67,7 @@ class JmfReader(BaseReader):
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-        self.filedir = self.filepath.parents[0]
+        self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []

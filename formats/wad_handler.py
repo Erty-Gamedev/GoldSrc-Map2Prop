@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, OrderedDict, Dict, Union
 from pathlib import Path
 from collections import OrderedDict
@@ -52,10 +50,20 @@ class WadHandler:
             if config.wad_list:
                 wad_list.extend(config.wad_list)
 
-            # Prioritise .wad files from mod folder
+            # Prioritise .wad files from mod folder and handle Steampipe
             globs: List[Path] = []
-            if config.mod_path:
-                globs.extend(config.mod_path.glob('*.wad'))
+            if modpath := config.mod_path:
+                if '_addon' in str(modpath):
+                    globs.extend(modpath.glob('*.wad'))
+                    modpath = modpath.parent / modpath.stem.replace('_addon', '')
+                elif '_hd' in str(modpath):
+                    globs.extend(modpath.glob('*.wad'))
+                    modpath = modpath.parent / modpath.stem.replace('_hd', '')
+                elif '_downloads' in str(modpath):
+                    globs.extend(modpath.glob('*.wad'))
+                    modpath = modpath.parent / modpath.stem.replace('_downloads', '')
+                
+                globs.extend(modpath.glob('*.wad'))
 
             # Finally add any .wad files from the source file dir
             globs.extend(self.filedir.glob('*.wad'))

@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
 Utility class for arguments and config file parsing.
-
-@author: Erty
 """
 
 from typing import Optional, List, Self
@@ -16,27 +13,29 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '0.9.1-beta'
+VERSION = '1.0.0-rc1'
 
 
 @dataclasses.dataclass
 class Args:
-    input: Optional[str] = None
-    output: Optional[str] = None
-    game_config: Optional[str] = None
-    studiomdl: Optional[str] = None
-    wad_list: Optional[str] = None
-    wad_cache: Optional[int] = None
-    smoothing: Optional[float] = None
-    autocompile: Optional[bool] = False
-    timeout: Optional[float] = None
-    autoexit: Optional[bool] = False
-    outputname: Optional[str] = None
-    scale: Optional[float] = None
-    gamma: Optional[float] = None
-    offset: Optional[List[float]] = None
-    rotate: Optional[float] = None
-    renamechrome: Optional[bool] = False
+    """To help with typing"""
+    input:        Optional[str] = None
+    output:       Optional[str] = None
+    mapcompile:   bool = False
+    game_config:  Optional[str] = None
+    studiomdl:    Optional[str] = None
+    wad_list:     Optional[str] = None
+    wad_cache:    Optional[int] = None
+    smoothing:    Optional[float] = None
+    autocompile:  Optional[bool] = None
+    timeout:      Optional[float] = None
+    autoexit:     Optional[bool] = None
+    outputname:   Optional[str] = None
+    scale:        Optional[float] = None
+    gamma:        Optional[float] = None
+    offset:       Optional[List[float]] = None
+    rotate:       Optional[float] = None
+    renamechrome: Optional[bool] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> Self:
@@ -50,37 +49,63 @@ class Args:
 
 class ConfigUtil:
     def __init__(self, filepath: Path) -> None:
-        self.config = configparser.ConfigParser()
-        if filepath.exists():
-            self.config.read(filepath)
-        else:
-            self.create_default_config()
-            with filepath.open('w') as configfile:
-                self.config.write(configfile)
+        self.filepath = filepath
 
-        self.parser = argparse.ArgumentParser(
+        self._input:         Optional[str] = None
+        self._output:        Path = Path('.')
+        self._mapcompile:    bool = False
+        self._game_config:   str = ''
+        self._studiomdl:     Optional[Path] = None
+        self._wad_list:      List[Path] = []
+        self._wad_cache:     int = 10
+        self._smoothing:     float = 60.0
+        self._autocompile:   bool = True
+        self._timeout:       float = 60.0
+        self._autoexit:      bool = False
+        self._qc_outputname: Optional[str] = None
+        self._qc_scale:      float = 1.0
+        self._qc_gamma:      float = 1.8
+        self._qc_offset:     str = '0 0 0'
+        self._qc_rotate:     float = 270.0
+        self._renamechrome:  Optional[bool] = None
+
+        self.load_configini()
+        self.argparser = argparse.ArgumentParser(
             prog='GoldSrc Map2Prop',
             description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into '\
                 'goldsrc .smd files for model creation.',
             exit_on_error=False
         )
-
-        self.parseargs()
+        self.load_args()
+        self.read_configs()
 
     def app_exit(self, status: int = 0, message: str = '') -> None:
-        self.parser.exit(status, message)
+        self.argparser.exit(status, message)
 
-    def parseargs(self) -> None:
-        self.parser.add_argument('input', nargs='?', type=str,
+    def load_configini(self) -> None:
+        self.configini = configparser.ConfigParser(default_section='AppConfig')
+        if self.filepath.exists():
+            self.configini.read(self.filepath)
+        else:
+            self.create_default_config()
+            with self.filepath.open('w') as configfile:
+                self.configini.write(configfile)
+
+    def load_args(self) -> None:
+        self.argparser.add_argument('input', nargs='?', type=str,
                                  help='.map/.rmf/.jmf/.obj file to convert')
-        self.parser.add_argument(
+        self.argparser.add_argument(
             '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
             help='display current version')
 
-        general = self.parser.add_argument_group('general arguments')
+        general = self.argparser.add_argument_group('general arguments')
         general.add_argument(
             '-o', '--output', type=str, metavar='',
             help='specify an output directory')
+        general.add_argument(
+            '-c', '--mapcompile', action='store_true',
+            help='modify .map input to replace func_map2prop with model entities after compile'
+        )
         general.add_argument(
             '-g', '--game_config', type=str, metavar='',
             help='game setup to use from config.ini')
@@ -91,7 +116,7 @@ class ConfigUtil:
             '-w', '--wad_list', type=str, metavar='',
             help='path to text file listing .wad files')
         general.add_argument(
-            '-c', '--wad_cache', type=int, metavar='',
+            '-n', '--wad_cache', type=int, metavar='',
             help='max number of .wad files to keep in memory',)
         general.add_argument(
             '-s', '--smoothing', type=float, default=60.0, metavar='',
@@ -107,7 +132,7 @@ class ConfigUtil:
             '-x', '--autoexit', action='store_true',
             help='don\'t ask for input after finish')
 
-        qc = self.parser.add_argument_group('.qc options')
+        qc = self.argparser.add_argument_group('.qc options')
         qc.add_argument(
             '--outputname', type=str, metavar='',
             help='filename for the finished model')
@@ -124,123 +149,129 @@ class ConfigUtil:
             '--rotate', type=float, metavar='0.0',
             help='rotate the model by this many degrees')
         
-        misc = self.parser.add_argument_group('misc options')
+        misc = self.argparser.add_argument_group('misc options')
         misc.add_argument(
             '--renamechrome', action='store_true',
             help='rename chrome textures (disables chrome)'
         )
 
-        self.args = Args.from_dict(vars(self.parser.parse_args()))
-        self.input = self.args.input
+        self.args = Args.from_dict(vars(self.argparser.parse_args()))
 
-    @property
-    def qc_outname(self) -> str:
-        return self.args.outputname if self.args.outputname else ''
+    def read_configs(self) -> None:
+        """Make sure we read configs and args in the correct order.
+        CLI args should be prioritised over config.ini settings."""
 
-    @property
-    def qc_scale(self) -> float:
-        return self.args.scale if self.args.scale else 1.0
-
-    @property
-    def qc_gamma(self) -> float:
-        return self.args.gamma if self.args.gamma else 1.8
-
-    @property
-    def qc_offset(self) -> str:
-        if self.args.offset:
-            return ' '.join([f"{i}" for i in self.args.offset])
-        return '0 0 0'
-
-    @property
-    def qc_rotate(self) -> float:
-        return (270.0 + (self.args.rotate if self.args.rotate else 0.0)) % 360
-
-    @property
-    def output_dir(self) -> Path:
-        if self.args.output:
-            path = self.args.output
-        else:
-            path = self.config['AppConfig'].get('output directory', None)
-        return Path(path) if path else Path('.')
-
-    @property
-    def game_config(self) -> str:
         if self.args.game_config:
-            return self.args.game_config
-        return self.config['AppConfig'].get('game config', '')
+            self._game_config = self.args.game_config
+        else:
+            self._game_config = self.configini['AppConfig'].get('game config', 'AppConfig')
+
+        configini = self.configini[self.game_config]
+
+        self._input = self.args.input
+
+        if self.args.output:
+            self._output = Path(self.args.output)
+        else:
+            self._output = Path(configini.get('output directory', '.'))
+
+        self._mapcompile = self.args.mapcompile
+
+        if self.args.studiomdl:
+            self._studiomdl = Path(self.args.studiomdl)
+        elif studiomdl := (configini.get('studiomdl', None)):
+            self._studiomdl = Path(studiomdl)
+
+        if self.args.wad_list:
+            with Path(self.args.wad_list).open('r') as file:
+                self._wad_list = [Path(wad.rstrip()) for wad
+                                  in list(file) if wad.rstrip() != '']
+        else:
+            self._wad_list = [Path(wad) for wad in configini.get('wad list', '')
+                              .rstrip(' ,').replace("\n", '').split(',') if wad]
+        
+        if self.args.wad_cache:
+            self._wad_cache = self.args.wad_cache
+        else:
+            self._wad_cache = configini.getint('wad cache', 10)
+
+        if self.args.smoothing:
+            self._smoothing = self.args.smoothing
+        else:
+            self._smoothing = configini.getfloat('smoothing threshold', 60.0)
+
+        self._autocompile = self.args.autocompile or configini.getboolean('autocompile', False)
+
+        if self.args.timeout:
+            self._timeout = self.args.timeout
+        else:
+            self._timeout = configini.getfloat('timeout', 60.0)
+        
+        self._autoexit = self.mapcompile or self.args.autoexit or configini.getboolean('autoexit', False) 
+        
+        self._qc_outputname = self.args.outputname if self.args.outputname else ''
+
+        self._qc_scale = self.args.scale if self.args.scale else 1.0
+
+        self._qc_gamma = self.args.gamma if self.args.gamma else 1.8
+
+        if self.args.offset:
+            self._qc_offset = ' '.join([f"{i}" for i in self.args.offset])
+
+        if self.args.rotate:
+            self._qc_rotate = (270.0 + self.args.rotate) % 360
+
+        self._renamechrome = self.args.renamechrome or configini.getboolean('rename chrome', False)
 
     @property
-    def studiomdl(self) -> Optional[Path]:
-        if self.args.studiomdl:
-            return Path(self.args.studiomdl)
-        if studiomdl := (self.config['AppConfig'].get('studiomdl', None)):
-            return Path(studiomdl) if studiomdl else None
-        return None
+    def input(self) -> Optional[str]: return self._input
+    @property
+    def output_dir(self) -> Path: return self._output
+    @property
+    def mapcompile(self) -> bool: return self._mapcompile
+    @property
+    def game_config(self) -> str: return self._game_config
+    @property
+    def studiomdl(self) -> Optional[Path]: return self._studiomdl
+    @property
+    def wad_list(self) -> List[Path]: return self._wad_list
+    @property
+    def wad_cache(self) -> int: return self._wad_cache
+    @property
+    def smoothing(self) -> float: return self._smoothing
+    @property
+    def autocompile(self) -> bool: return self._autocompile
+    @property
+    def timeout(self) -> float: return self._timeout
+    @property
+    def autoexit(self) -> bool: return self._autoexit
+    @property
+    def qc_outputname(self) -> str: return self._qc_outputname
+    @property
+    def qc_scale(self) -> float: return self._qc_scale
+    @property
+    def qc_gamma(self) -> float: return self._qc_gamma
+    @property
+    def qc_offset(self) -> str: return self._qc_offset
+    @property
+    def qc_rotate(self) -> float: return self._qc_rotate
+    @property
+    def renamechrome(self) -> bool: return self._renamechrome
 
     @property
     def mod_path(self) -> Optional[Path]:
         game = self.game_config
-        steamdir = self.config['AppConfig'].get('steam directory', None)
+        steamdir = self.configini[game].get('steam directory', None)
 
         if not game or not steamdir:
             return None
 
         return (Path(steamdir) / r'steamapps/common'
-                / self.config[game].get('game')
-                / self.config[game].get('mod'))
-
-    @property
-    def wad_list(self) -> list:
-        if self.args.wad_list:
-            with Path(self.args.wad_list).open('r') as file:
-                return [Path(wad.rstrip()) for wad
-                        in list(file) if wad.rstrip() != '']
-        wads = (self.config['AppConfig'].get('wad list', '').rstrip(' ,')
-                .replace("\n", '').split(','))
-        return [Path(wad) for wad in wads if wad != '']
-
-    @property
-    def wad_cache(self) -> int:
-        if self.args.wad_cache:
-            return self.args.wad_cache
-        return self.config['AppConfig'].getint('wad cache', 10)
-
-    @property
-    def autocompile(self) -> bool:
-        return bool(self.args.autocompile
-                or self.config['AppConfig'].getboolean('autocompile', False))
-
-    @property
-    def timeout(self) -> float:
-        if self.args.timeout:
-            return self.args.timeout
-        return self.config['AppConfig'].getfloat('timeout', 60.0)
-
-    @property
-    def autoexit(self) -> bool:
-        if self.args.autoexit:
-            return self.args.autoexit
-        return self.config['AppConfig'].getboolean('autoexit', False)
-
-    @property
-    def smoothing(self) -> bool:
-        return bool(self.args.smoothing
-                    or self.config['AppConfig'].getboolean('smoothing', False))
-
-    @property
-    def smoothing_treshhold(self) -> float:
-        if self.args.smoothing:
-            return self.args.smoothing
-        return self.config['AppConfig'].getfloat('smoothing threshold', 60.0)
-    
-    @property
-    def renamechrome(self) -> bool:
-        return bool(self.args.renamechrome
-                    or self.config['AppConfig'].getboolean('rename chrome', False))
+                / self.configini[game].get('game', '')
+                / self.configini[game].get('mod', ''))
 
     def create_default_config(self):
-        self.config['AppConfig'] = {
-            'smoothing': 'no',
+        self.configini['AppConfig'] = {
             'smoothing threshold': 60.0,
             'rename chrome': 'no',
             'output directory': r'/converted',
@@ -254,15 +285,15 @@ class ConfigUtil:
             'timeout': 60.0,
             'wad list': ''
         }
-        self.config['halflife'] = {
+        self.configini['halflife'] = {
             'game': 'Half-Life',
             'mod': 'valve',
         }
-        self.config['svencoop'] = {
+        self.configini['svencoop'] = {
             'game': 'Sven Co-op',
             'mod': 'svencoop',
         }
-        self.config['cstrike'] = {
+        self.configini['cstrike'] = {
             'game': 'Half-Life',
             'mod': 'cstrike',
         }

@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Dict, Final, Literal
 from pathlib import Path
 import logging
-from geoutil import (Vector3D, Vertex, Polygon, Texture,
-                     ImageInfo, triangulate_face)
+from triangulate.triangulate import triangulate
+from geoutil import Vector3D, Vertex, Polygon, Texture, ImageInfo
 from formats.base_classes import BaseReader, BaseEntity, BaseFace, BaseBrush
 from formats.wad_handler import WadHandler
 
@@ -46,7 +44,7 @@ class Face(BaseFace):
         self._polygons: List[Polygon] = []
         self._texture = Texture(texture)
 
-        for triangle in triangulate_face(self._points):
+        for triangle in triangulate(self._points):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:
@@ -80,7 +78,7 @@ class ObjReader(BaseReader):
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-        self.filedir = self.filepath.parents[0]
+        self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []

@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Dict, Tuple, Any
 from PIL import Image
 from pathlib import Path
 from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
+from triangulate.triangulate import triangulate
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
-                     triangulate_face, intersection_3planes, sort_vertices,
-                     is_vertex_outside_planes)
+                     intersection_3planes, sort_vertices, is_vertex_outside_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
@@ -35,7 +33,7 @@ class Face(BaseFace):
                 normal
             ))
         
-        for triangle in triangulate_face(self._points):
+        for triangle in triangulate(self._points):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:
@@ -61,7 +59,11 @@ class Brush(BaseBrush):
     pass
 
 class Entity(BaseEntity):
-    pass
+    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush], raw: str):
+        super().__init__(classname, properties, brushes)
+        self._raw = raw
+    @property
+    def raw(self) -> str: return self._raw
 
 
 class MapReader(BaseReader):
@@ -69,7 +71,7 @@ class MapReader(BaseReader):
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-        self.filedir = self.filepath.parents[0]
+        self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
@@ -90,8 +92,12 @@ class MapReader(BaseReader):
         classname = ''
         properties: Dict[str, str] = {}
         brushes: List[Brush] = []
+        raw = "{\n"
 
-        while line := file.readline().strip():
+        while line := file.readline():
+            raw += line
+            line = line.strip()
+
             if line.startswith('//'):  # skip comments
                 continue
             elif line.startswith('"'):  # read keyvalues
@@ -101,24 +107,29 @@ class MapReader(BaseReader):
                 key, value = keyvalue[1].strip(), keyvalue[3].strip()
 
                 if key == 'classname':
-                    classname = value
+                    classname = value.lower()
                 elif key == 'wad' and classname == 'worldspawn':
                     self.wadhandler.set_wadlist(value.split(';'))
 
                 properties[key] = value
             elif line.startswith('{'):
-                brush = self.readbrush(file)
+                brush, rawbrush = self.readbrush(file)
                 brushes.append(brush)
+                raw += rawbrush
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected entity data: {line}")
-        return Entity(classname, properties, brushes)
+        return Entity(classname, properties, brushes, raw)
 
-    def readbrush(self, file: TextIOWrapper) -> Brush:
+    def readbrush(self, file: TextIOWrapper) -> Tuple[Brush, str]:
         planes: List[Plane] = []
+        raw = ''
 
-        while line := file.readline().strip():
+        while line := file.readline():
+            raw += line
+            line = line.strip()
+
             if line.startswith('//'):
                 continue
             elif line.startswith('('):
@@ -130,7 +141,7 @@ class MapReader(BaseReader):
 
         faces = self.faces_from_planes(planes)
 
-        return Brush(faces)
+        return Brush(faces), raw
     
     def readplane(self, line: str) -> Plane:
         parts = line.split()

@@ -1,21 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Geometric functions and classes
-
-@author: Erty
 """
 
 from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
 from dataclasses import dataclass
-from vector3d import Vector3D
+from vector3d import Vector3D, EPSILON
 from math import sqrt, cos, sin, acos
-from triangulate.triangulate import triangulate
 
 
 PI: Final[float] = 3.141592653589793116
 DEG2RAD: Final[float] = PI / 180.0
 RAD2DEG: Final[float] = 180.0 / PI
-EPSILON: Final[float] = 1/(2**10)
 Bounds: TypeAlias = Tuple[Vector3D, Vector3D]
 
 
@@ -92,13 +87,6 @@ class Plane(HessianPlane):
         super().__init__(*points_to_plane(*plane_vectors))
         self.plane_points = plane_vectors
         self.texture: Texture = texture
-
-
-class InvalidSolidException(Exception):
-    def __init__(self, message, vertices):
-        self.message = message
-        self.vertices = [(p[0], p[1], p[2]) for p in vertices]
-        super().__init__(f"{self.message}\nVertices:\n{self.vertices}")
 
 
 def get_triples(items: list, last_two_and_first: bool = True):
@@ -223,17 +211,6 @@ def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
 
 
-def triangulate_face(polygon: list) -> List[List[Vector3D]]:
-    """Returns a list of triangulated polygons from the polygon"""
-    tris = []
-    try:
-        for tri in triangulate(polygon):
-            tris.append([Vector3D(*p) for p in tri])
-    except Exception as e:
-        raise InvalidSolidException(e, polygon)
-    return tris
-
-
 def sum_vectors(vectors: List[Vector3D]) -> Vector3D:
     return Vector3D(*[sum(v) for v in zip(*vectors)])
 
@@ -300,14 +277,9 @@ def intersection_3planes(p1: HessianPlane,
     ) / denominator
 
 
-def geometric_center(vertices: List[Vector3D]) -> Vector3D:
+def geometric_center(vectors: List[Vector3D]) -> Vector3D:
     """Returns the geometric center of the given vertices"""
-    center = Vector3D(0, 0, 0)
-
-    for vertex in vertices:
-        center += vertex
-
-    return center / len(vertices)
+    return sum_vectors(vectors) / len(vectors)
 
 
 def bounds_from_points(points: List[Vector3D]) -> Bounds:
