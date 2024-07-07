@@ -3,6 +3,13 @@ from vector3d import Vector3D
 from itertools import chain
 
 
+class InvalidSolidException(Exception):
+    def __init__(self, message: str, vertices: List[Vector3D]):
+        self.message = message
+        self.vertices = [(p[0], p[1], p[2]) for p in vertices]
+        super().__init__(f"{self.message}\nVertices:\n{self.vertices}")
+
+
 def looped_pairs(
         polygon: List[Vector3D]) -> Generator[Tuple[Vector3D, Vector3D], None, None]:
     iterable = iter(polygon)

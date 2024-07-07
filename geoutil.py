@@ -91,13 +91,6 @@ class Plane(HessianPlane):
         self.texture: Texture = texture
 
 
-class InvalidSolidException(Exception):
-    def __init__(self, message, vertices):
-        self.message = message
-        self.vertices = [(p[0], p[1], p[2]) for p in vertices]
-        super().__init__(f"{self.message}\nVertices:\n{self.vertices}")
-
-
 def get_triples(items: list, last_two_and_first: bool = True):
     triples = [items[i:i + 3] for i in range(len(items) - 2)]
     if last_two_and_first:
