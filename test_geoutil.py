@@ -4,6 +4,7 @@ Tests for geometric functions
 
 import unittest
 import geoutil
+from triangulate.triangulate import triangulate
 
 # Simple test box of size 2x2x2
 box = {
@@ -72,11 +73,11 @@ class TestGeoutil(unittest.TestCase):
             result = geoutil.points_to_plane(*face[:3])
             self.assertEqual(expected[side], result)
 
-    def test_triangulate_face(self):
+    def test_triangulate(self):
         expected = [
-            [box['A'], box['C'], box['D']], [box['A'], box['D'], box['B']]
+            (box['A'], box['C'], box['D']), (box['A'], box['D'], box['B'])
         ]
-        result = geoutil.triangulate_face(boxfaces['x'])
+        result = list(triangulate(boxfaces['x']))
 
         self.assertEqual(expected, result)
 

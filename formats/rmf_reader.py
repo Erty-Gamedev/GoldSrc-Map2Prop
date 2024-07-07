@@ -3,7 +3,8 @@ from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
-from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
+from triangulate.triangulate import triangulate
+from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
@@ -35,7 +36,7 @@ class Face(BaseFace):
                 self._normal
             ))
 
-        for triangle in triangulate_face(self.points):
+        for triangle in triangulate(self.points):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:

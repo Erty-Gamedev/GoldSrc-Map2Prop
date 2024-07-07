@@ -81,7 +81,8 @@ def polygon_normal(polygon: List[Vector3D]) -> Vector3D:
     return normal
 
 
-def triangulate(polygon: List[Vector3D]):
+def triangulate(polygon: List[Vector3D]
+                )-> Generator[Tuple[Vector3D, Vector3D, Vector3D], None, None]:
     """
     Converts a polygon to a set of triangles that cover the same area.
 
@@ -91,17 +92,14 @@ def triangulate(polygon: List[Vector3D]):
     Modified to remove Numpy dependency.
 
     Returns:
-        a generator of triangles, each specified in the same format as the
-        input polygon
+        a generator of triangles (tuple of three Vector3D)
     """
-
-    polygon = [Vector3D(*v) for v in polygon]
 
     normal = polygon_normal(polygon)
     i: int = 0
     while len(polygon) > 2:
         if i >= len(polygon):
-            raise Exception('Triangulation failed')
+            raise InvalidSolidException('Triangulation failed', polygon)
         (a, b, c) = looped_slice(polygon, i, 3)
         triangle = (a, b, c)
         if (a.eq(b) or b.eq(c)):

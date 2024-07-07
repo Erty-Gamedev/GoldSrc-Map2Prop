@@ -4,15 +4,13 @@ Geometric functions and classes
 
 from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
 from dataclasses import dataclass
-from vector3d import Vector3D
+from vector3d import Vector3D, EPSILON
 from math import sqrt, cos, sin, acos
-from triangulate.triangulate import triangulate
 
 
 PI: Final[float] = 3.141592653589793116
 DEG2RAD: Final[float] = PI / 180.0
 RAD2DEG: Final[float] = 180.0 / PI
-EPSILON: Final[float] = 1/(2**10)
 Bounds: TypeAlias = Tuple[Vector3D, Vector3D]
 
 
@@ -211,17 +209,6 @@ def points_to_plane(a, b, c) -> tuple:
 
 def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
-
-
-def triangulate_face(polygon: list) -> List[List[Vector3D]]:
-    """Returns a list of triangulated polygons from the polygon"""
-    tris = []
-    try:
-        for tri in triangulate(polygon):
-            tris.append([Vector3D(*p) for p in tri])
-    except Exception as e:
-        raise InvalidSolidException(e, polygon)
-    return tris
 
 
 def sum_vectors(vectors: List[Vector3D]) -> Vector3D:
