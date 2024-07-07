@@ -61,7 +61,6 @@ class Face(BaseFace):
     @property
     def texture(self): return self._texture
 
-
 class Brush(BaseBrush):
     pass
 class Entity(BaseEntity):
