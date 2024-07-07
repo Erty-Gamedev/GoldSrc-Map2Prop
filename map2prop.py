@@ -35,6 +35,8 @@ def main() -> None:
             filename = r'test/cratetest.obj'
 
     logger.info(filename)
+    if config.mapcompile:
+        logger.info('Using --mapcompile')
 
     filepath = Path(filename)
     extension = filepath.suffix.lower()
@@ -84,7 +86,7 @@ def main() -> None:
 
     returncode = process_models(filename, outputdir, filereader)
 
-    if config.mapcompile:
+    if config.mapcompile and isinstance(filereader, MapReader):
         if returncode > 0:
             config.app_exit(3,'Something went wrong while compiling the models. '\
                             'Check the logs')
