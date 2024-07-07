@@ -501,7 +501,7 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
             new_raw = "{\n" f"\"classname\" \"{new_class}\"\n"\
                 f"\"model\" \"{kvs['model']}\"\n"
             if 'angles' in kvs and kvs['angles']:
-                new_raw += f"\"angles\" \"{kvs['angles']}\"\n"
+                new_raw += f"\"angles\" \"360 {kvs['angles'].split(' ')[1]} 360\"\n"
             if 'origin' in kvs and kvs['origin']:
                 new_raw += f"\"origin\" \"{kvs['origin']}\"\n"
             new_raw += "}\n"
@@ -509,4 +509,3 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
             file.write(new_raw)
 
     return None
-
