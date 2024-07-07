@@ -479,6 +479,9 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
 
             kvs = entity.properties
 
+            if 'spawnflags' in kvs and (int(kvs['spawnflags']) & 1):
+                continue  # Entity is disabled, skip
+
             if 'parent_model' in kvs and kvs['parent_model']:
                 parent_model = kvs['parent_model']
                 if parent_model not in edict:
