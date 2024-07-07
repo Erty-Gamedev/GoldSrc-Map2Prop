@@ -15,9 +15,11 @@ from formats import MissingTextureException
 from formats.base_classes import BaseReader
 from formats.export import process_models, rewrite_map
 
+setup_logger()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-enter_to_exit = 'Press Enter to exit...'
-running_as_exe: Final[bool] = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+RUNNING_AS_EXE: Final[bool] = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
 
 class InvalidFileException(Exception):
@@ -25,20 +27,20 @@ class InvalidFileException(Exception):
 
 
 def main() -> None:
-    if config.input:
-        filename = config.input
-    else:
-        if running_as_exe:
-            logger.info('Please drag-and-drop a file onto the executable')
-            config.app_exit(2)
-        else:
-            filename = r'test/cratetest.obj'
+    if not config.input:
+        logger.warning('No input. Please drag-and-drop a file onto the executable')
+        config.app_exit(2)
+
+    filename = config.input
+    filepath = Path(filename)
+
+    if not filepath.exists():
+        logger.warning(f"Input file {filename} does not found")
 
     logger.info(filename)
     if config.mapcompile:
         logger.info('Using --mapcompile')
 
-    filepath = Path(filename)
     extension = filepath.suffix.lower()
 
     if extension.strip() == '' and Path(f"{filename}.map").exists():
@@ -95,10 +97,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    setup_logger()
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-
     if not config:
         logger.error('Could not parse config file, exiting...')
         exit(2)
@@ -111,6 +109,6 @@ if __name__ == '__main__':
         logger.exception(str(e))
         config.app_exit(1, str(e))
     finally:
-        if running_as_exe and not config.autoexit:
-            input(enter_to_exit)
+        if RUNNING_AS_EXE and not config.autoexit:
+            input('Press Enter to exit...')
         shutdown_logger(logger)
