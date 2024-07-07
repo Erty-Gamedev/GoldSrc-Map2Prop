@@ -5,8 +5,7 @@ from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from triangulate.triangulate import triangulate
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
-                     triangulate, intersection_3planes, sort_vertices,
-                     is_vertex_outside_planes)
+                     intersection_3planes, sort_vertices, is_vertex_outside_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
