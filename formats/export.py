@@ -178,7 +178,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 def vertex_in_list(vertex: Vertex,
                    vertex_list: Dict[Vector3D, List[Vertex]]) -> Optional[Vector3D]:
     for other in vertex_list:
-        if vertex.v.eq(other):
+        if vertex.v == other:
             return other
     return None
 

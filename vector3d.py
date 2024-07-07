@@ -50,7 +50,7 @@ class Vector3D(list):
             self.x * b[1] - self.y * b[0]
         )
 
-    def eq(self, b) -> bool:
+    def __eq__(self, b) -> bool:
         return (
             abs(self.x - b[0]) < EPSILON and
             abs(self.y - b[1]) < EPSILON and

@@ -102,7 +102,7 @@ def triangulate(polygon: List[Vector3D]
             raise InvalidSolidException('Triangulation failed', polygon)
         (a, b, c) = looped_slice(polygon, i, 3)
         triangle = (a, b, c)
-        if (a.eq(b) or b.eq(c)):
+        if (a == b or b == c):
             # Duplicate vertex, remove and skip
             del polygon[(i + 1) % len(polygon)]
             continue
