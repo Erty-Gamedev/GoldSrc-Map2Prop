@@ -497,9 +497,16 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
                     new_class = CONVERT_TO_MAPPING[int(convert_to)]
                 else:
                     new_class = convert_to
+
+            spawnflags = 0
+            if new_class.startswith('monster_'):
+                spawnflags |= 16  # Prisoner
+            if new_class == 'monster_generic':
+                spawnflags |= 4  # Not solid
             
             new_raw = "{\n" f"\"classname\" \"{new_class}\"\n"\
-                f"\"model\" \"{kvs['model']}\"\n"
+                f"\"model\" \"{kvs['model']}\"\n"\
+                f"\"spawnflags\" \"{spawnflags}\"\n"
             if 'angles' in kvs and kvs['angles']:
                 new_raw += f"\"angles\" \"360 {kvs['angles'].split(' ')[1]} 360\"\n"
             if 'origin' in kvs and kvs['origin']:
