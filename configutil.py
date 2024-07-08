@@ -75,7 +75,7 @@ class ConfigUtil:
 
         self.load_configini()
         self.argparser = argparse.ArgumentParser(
-            prog='GoldSrc Map2Prop',
+            prog='Map2Prop',
             description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into '\
                 'goldsrc .smd files for model creation.',
             exit_on_error=False
