@@ -80,7 +80,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                         entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
                         break
                 continue  # Don't need to do anything else
-            if 'own_model' in entity.properties and entity.properties['own_model'] == '1':
+            if ('own_model' in entity.properties and entity.properties['own_model'] == '1')\
+                or config.mapcompile:
                 own_model = True
                 outname = f"{filename}_{n}"
                 if 'outname' in entity.properties and entity.properties['outname']:
