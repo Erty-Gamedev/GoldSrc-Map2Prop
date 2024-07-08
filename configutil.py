@@ -22,20 +22,22 @@ class Args:
     input:        Optional[str] = None
     output:       Optional[str] = None
     mapcompile:   bool = False
+    force_rmf:    bool = False
+    force_jmf:    bool = False
     game_config:  Optional[str] = None
     studiomdl:    Optional[str] = None
     wad_list:     Optional[str] = None
     wad_cache:    Optional[int] = None
     smoothing:    Optional[float] = None
-    autocompile:  Optional[bool] = None
+    autocompile:  bool = False
     timeout:      Optional[float] = None
-    autoexit:     Optional[bool] = None
+    autoexit:     bool = False
     outputname:   Optional[str] = None
     scale:        Optional[float] = None
     gamma:        Optional[float] = None
     offset:       Optional[List[float]] = None
     rotate:       Optional[float] = None
-    renamechrome: Optional[bool] = None
+    renamechrome: bool = False
 
     @classmethod
     def from_dict(cls, d: dict) -> Self:
@@ -54,6 +56,8 @@ class ConfigUtil:
         self._input:         Optional[str] = None
         self._output:        Path = Path('.')
         self._mapcompile:    bool = False
+        self._force_rmf:     bool = False
+        self._force_jmf:     bool = False
         self._game_config:   str = ''
         self._studiomdl:     Optional[Path] = None
         self._wad_list:      List[Path] = []
@@ -106,6 +110,17 @@ class ConfigUtil:
             '-c', '--mapcompile', action='store_true',
             help='modify .map input to replace func_map2prop with model entities after compile'
         )
+
+        forceformat = general.add_mutually_exclusive_group()
+        forceformat.add_argument(
+            '--forcermf', action='store_true',
+            help='when using --mapcompile forces the use of the .rmf file as input instead of .map'
+        )
+        forceformat.add_argument(
+            '--forcejmf', action='store_true',
+            help='when using --mapcompile forces the use of the .jmf file as input instead of .map'
+        )
+
         general.add_argument(
             '-g', '--game_config', type=str, metavar='',
             help='game setup to use from config.ini')
@@ -176,6 +191,8 @@ class ConfigUtil:
             self._output = Path(configini.get('output directory', '.'))
 
         self._mapcompile = self.args.mapcompile
+        self._force_rmf = self.args.force_rmf
+        self._force_jmf = self.args.force_jmf
 
         if self.args.studiomdl:
             self._studiomdl = Path(self.args.studiomdl)
@@ -229,6 +246,10 @@ class ConfigUtil:
     def output_dir(self) -> Path: return self._output
     @property
     def mapcompile(self) -> bool: return self._mapcompile
+    @property
+    def force_rmf(self) -> bool: return self._force_rmf
+    @property
+    def force_jmf(self) -> bool: return self._force_jmf
     @property
     def game_config(self) -> str: return self._game_config
     @property

@@ -34,6 +34,12 @@ def main() -> None:
     filename = config.input
     filepath = Path(filename)
 
+    if config.mapcompile:
+        if config.force_rmf:
+            filepath = filepath.parent / f"{filepath.stem}.rmf"
+        elif config.force_jmf:
+            filepath = filepath.parent / f"{filepath.stem}.jmf"
+
     if not filepath.exists():
         logger.warning(f"Input file {filename} does not found")
 
