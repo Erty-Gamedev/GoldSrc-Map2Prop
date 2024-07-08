@@ -145,11 +145,11 @@ class RmfReader(BaseReader):
 
     def readvisgroup(self, file: BufferedReader) -> None:
         read_ntstring(file, 128)  # Name
-        read_colour(file)  # Editor colour
-        file.read(1)  # Padding byte
-        read_int(file)  # Visgroup id
-        read_bool(file)  # Editor visibility
-        file.read(3)  # Padding bytes
+        read_colour(file)         # Editor colour
+        file.read(1)              # Padding byte
+        read_int(file)            # Visgroup id
+        read_bool(file)           # Editor visibility
+        file.read(3)              # Padding bytes
 
     def readobject(self, file: BufferedReader
         ) -> Union[Brush, Entity, Group]:
@@ -269,7 +269,9 @@ class RmfReader(BaseReader):
         if 'spawnflags' not in properties:
             properties['spawnflags'] = str(spawnflags)
 
-        read_vector3D(file)  # Origin for point entities
+        origin = read_vector3D(file)  # Origin for point entities
+        if not brushes:
+            properties['origin'] = origin
 
         file.read(4)  # Padding?
 
