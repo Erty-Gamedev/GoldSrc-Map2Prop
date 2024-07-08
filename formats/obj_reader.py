@@ -2,7 +2,7 @@ from typing import List, Dict, Final, Literal
 from pathlib import Path
 import logging
 from triangulate.triangulate import triangulate
-from geoutil import Vector3D, Vertex, Polygon, Texture, ImageInfo
+from geoutil import Vector3D, Vertex, Polygon, Texture, ImageInfo, plane_normal
 from formats.base_classes import BaseReader, BaseEntity, BaseFace, BaseBrush
 from formats.wad_handler import WadHandler
 
@@ -43,6 +43,7 @@ class Face(BaseFace):
         self._vertices = vertices
         self._polygons: List[Polygon] = []
         self._texture = Texture(texture)
+        self._normal = plane_normal(points[:3])
 
         for triangle in triangulate(self._points):
             polygon = []
