@@ -57,6 +57,11 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         own_model = False
         subdir = ''
 
+        if entity.classname == 'worldspawn' and not isinstance(filereader, MapReader):
+            entity.properties['wad'] = ';'.join(
+                [p.resolve().as_posix() for p in filereader.wadhandler.used_wads]
+            )
+
         if entity.classname == 'func_map2prop':
             if 'spawnflags' in entity.properties and (int(entity.properties['spawnflags']) & 1):
                 continue  # Model is disabled
