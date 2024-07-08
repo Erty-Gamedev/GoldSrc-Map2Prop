@@ -1,5 +1,5 @@
 
-@SolidClass = func_map2prop : "Brushes for Map2Prop to turn into a model" 
+@SolidClass = func_map2prop : "Entity for Map2Prop to turn into a model" 
 [
 	spawnflags(flags) =
 	[
