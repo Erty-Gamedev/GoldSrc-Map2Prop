@@ -1,4 +1,4 @@
-from typing import List, OrderedDict, Dict, Union
+from typing import List, OrderedDict, Dict, Union, Literal
 from pathlib import Path
 from collections import OrderedDict
 from PIL.Image import Image
@@ -38,6 +38,7 @@ class WadHandler:
         self.cache_size: int = config.wad_cache
         self.wads: OrderedDict[Union[Path, str], Wad3Reader] = OrderedDict()
         self.textures: Dict[str, Image] = {}
+        self.used_wads: List[Path] = []
 
     def __del__(self):
         shutdown_logger(logger)
@@ -86,38 +87,44 @@ class WadHandler:
             self.wads[wad] = Wad3Reader(wad)
         return self.wads[wad]
 
-    def check_wads(self, texture: str) -> bool:
+    def check_wads(self, texture: str) -> Union[Wad3Reader, Literal[False]]:
         for wad in self.get_wad_list():
             reader = self.get_wad_reader(wad)
             if texture in reader:
+                if wad not in self.used_wads:
+                    self.used_wads.append(wad)
                 self.textures[texture] = reader[texture]
-                logger.info(f"Extracting {texture} from {reader.file}.")
-                reader[texture].save(self.outputdir / f"{texture}.bmp")
-                return True
+                return reader
         return False
 
     def check_texture(self, texture: str) -> bool:
         if texture.lower() in self.SKIP_TEXTURES or texture.lower() in self.TOOL_TEXTURES:
             return True
+        
+        if texture in self.textures:
+            return True
+        
+        reader: Union[Wad3Reader, Literal[False]] = self.check_wads(texture)
 
         texfile = f"{texture}.bmp"
 
-        check = True
-        if not (self.outputdir / texfile).exists():
-            if (self.filedir / texfile).exists():
-                copy2(self.filedir / texfile, self.outputdir / texfile)
-            else:
-                logger.info(f"\
-Texture {texture}.bmp not found in input file's directory. \
-Searching directory for .wad packages...")
+        if (self.outputdir / texfile).exists():
+            return True
 
-                if (check := self.check_wads(texture)) is False:
-                    logger.info(f"\
-Texture {texture} not found in neither input file's directory \
-or any .wad packages within that directory. Please place the .wad package \
-containing the texture in the input file's directory and re-run the \
-application or extract the textures manually prior to compilation.")
-        return check
+        if (self.filedir / texfile).exists():
+            copy2(self.filedir / texfile, self.outputdir / texfile)
+            return True
+        
+        if isinstance(reader, Wad3Reader):
+            logger.info(f"Extracting {texture} from {reader.file}.")
+            reader[texture].save(self.outputdir / f"{texture}.bmp")
+            return True
+
+        logger.info(f"Texture {texture} not found in neither input file's directory "\
+            'or any .wad packages within that directory. Please place the .wad package '\
+            'containing the texture in the input file\'s directory and re-run the '\
+            'application or extract the textures manually prior to compilation.')
+        return False
 
     def get_texture(self, texture: str) -> Image:
         return self.textures[texture]
