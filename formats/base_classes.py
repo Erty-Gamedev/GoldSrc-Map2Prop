@@ -83,7 +83,7 @@ class BaseBrush(ABC):
         
         # ( 1 2 3 ) ( 1 2 3 ) ( 1 -2 3 ) C1A0_LABW4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 
 
-        f = f".{MAP_NDIGITS}f"
+        f = f".{MAP_NDIGITS}g"
         for face in self.faces:
             x, y, z = sort_vertices(face.points[:3], -face.normal)
             ux, uy, uz = face.texture.rightaxis
