@@ -43,10 +43,6 @@ def main() -> None:
     if not filepath.exists():
         logger.warning(f"Input file {filename} does not found")
 
-    logger.info(filename)
-    if config.mapcompile:
-        logger.info('Using --mapcompile')
-
     extension = filepath.suffix.lower()
 
     if extension.strip() == '' and Path(f"{filename}.map").exists():
@@ -57,6 +53,10 @@ def main() -> None:
         raise InvalidFileException('Invalid file type. '\
             '--mapcompile can only be used with map formats, '\
             f"but file was {extension}")
+
+    logger.info(filename)
+    if config.mapcompile:
+        logger.info('Using --mapcompile')
 
     filedir = filepath.parent
     filename = filepath.stem
