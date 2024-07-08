@@ -62,7 +62,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         if config.mapcompile and entity.classname != 'func_map2prop':
             continue
 
-        outname = filename
+        outname = config.qc_outputname if config.qc_outputname else filename
         own_model = False
         subdir = ''
 
