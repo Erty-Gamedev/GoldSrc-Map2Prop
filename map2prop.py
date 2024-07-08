@@ -47,10 +47,10 @@ def main() -> None:
         filepath = Path(f"{filename}.map")
         extension = '.map'
 
-    if config.mapcompile and extension != '.map':
+    if config.mapcompile and extension == '.obj':
         raise InvalidFileException('Invalid file type. '\
-                                   '--mapcompile can only be used with .map, '\
-                                    f"but file was {extension}")
+            '--mapcompile can only be used with map formats, '\
+            f"but file was {extension}")
 
     filedir = filepath.parent
     filename = filepath.stem
@@ -88,7 +88,7 @@ def main() -> None:
 
     returncode = process_models(filename, outputdir, filereader)
 
-    if config.mapcompile and isinstance(filereader, MapReader):
+    if config.mapcompile:
         if returncode > 0:
             config.app_exit(3,'Something went wrong while compiling the models. '\
                             'Check the logs')
