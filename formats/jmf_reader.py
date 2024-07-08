@@ -177,7 +177,7 @@ class JmfReader(BaseReader):
 
     def readentity(self, file: BufferedReader) -> Entity:
         classname = read_lpstring2(file)
-        read_vector3D(file)  # Origin for point entities
+        origin = read_vector3D(file)  # Origin for point entities
         read_int(file)  # Jack editor state
         read_int(file)  # Group id
         read_int(file)  # root group id
@@ -220,6 +220,9 @@ class JmfReader(BaseReader):
         brush_count = read_int(file)
         for _ in range(brush_count):
             brushes.append(self.readbrush(file))
+
+        if not brushes:
+            properties['origin'] = ' '.join(f"{p:.6g}" for p in origin)
 
         return Entity(classname, properties, brushes)
 

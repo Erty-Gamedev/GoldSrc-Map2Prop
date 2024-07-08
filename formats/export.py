@@ -47,13 +47,22 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 
     n = 0
     for entity in filereader.entities:
+        if entity.classname == 'worldspawn':
+            if isinstance(filereader, MapReader):
+                entity.properties['_note'] = 'Modified by Map2Prop'
+            else:
+                entity.properties['wad'] = ';'.join(
+                    ['/' + p.resolve().relative_to(p.anchor).as_posix()\
+                     for p in filereader.wadhandler.used_wads])
+                entity.properties['_note'] = 'Produced by Map2Prop'
+
         if not entity.brushes:
             continue
 
         if config.mapcompile and entity.classname != 'func_map2prop':
             continue
 
-        outname = filename
+        outname = config.qc_outputname if config.qc_outputname else filename
         own_model = False
         subdir = ''
 
@@ -442,12 +451,18 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
     return returncode
 
     
-def rewrite_map(filepath: Path, filereader: MapReader) -> None:
+def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
     filedir = filepath.parent
     filename = filepath.stem
 
-    # Create a backup
-    copy2(filepath, filedir / f"{filename}.m2p")
+    logger.info('Converting func_map2prop entities')
+
+    if isinstance(filereader, MapReader):
+        # Create a backup
+        copy2(filepath, filedir / f"{filename}.m2p")
+        logger.info(f"Created backup of MAP at {filedir}/{filename}.m2p")
+    else:
+        filepath = filedir / f"{filename}.map"
 
     # Not a true edict as we all know and love.
     # It is just to map func_map2prop entities to their targetnames
@@ -470,6 +485,9 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
 
         edict[entity.properties['targetname']] = entity
     
+
+    logger.info(f"Writing modified MAP to {filepath}")
+
     # Convert func_map2prop entities
     with filepath.open('w') as file:
         for entity in filereader.entities:
@@ -514,5 +532,7 @@ def rewrite_map(filepath: Path, filereader: MapReader) -> None:
             new_raw += "}\n"
 
             file.write(new_raw)
+
+    logger.info('MAP successfully written. Ready for CSG')
 
     return None

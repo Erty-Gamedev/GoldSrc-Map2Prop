@@ -54,9 +54,12 @@ class Face(BaseFace):
     @property
     def normal(self): return self._normal
 
-
 class Brush(BaseBrush):
-    pass
+    def __init__(self, faces: List[Face], raw: str):
+        super().__init__(faces)
+        self._raw = raw
+    @property
+    def raw(self) -> str: return self._raw
 
 class Entity(BaseEntity):
     def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush], raw: str):
@@ -113,16 +116,16 @@ class MapReader(BaseReader):
 
                 properties[key] = value
             elif line.startswith('{'):
-                brush, rawbrush = self.readbrush(file)
+                brush = self.readbrush(file)
                 brushes.append(brush)
-                raw += rawbrush
+                raw += brush.raw
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected entity data: {line}")
         return Entity(classname, properties, brushes, raw)
 
-    def readbrush(self, file: TextIOWrapper) -> Tuple[Brush, str]:
+    def readbrush(self, file: TextIOWrapper) -> Brush:
         planes: List[Plane] = []
         raw = ''
 
@@ -141,7 +144,7 @@ class MapReader(BaseReader):
 
         faces = self.faces_from_planes(planes)
 
-        return Brush(faces), raw
+        return Brush(faces, raw)
     
     def readplane(self, line: str) -> Plane:
         parts = line.split()
