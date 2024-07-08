@@ -271,7 +271,7 @@ class RmfReader(BaseReader):
 
         origin = read_vector3D(file)  # Origin for point entities
         if not brushes:
-            properties['origin'] = origin
+            properties['origin'] = ' '.join(f"{p:.6g}" for p in origin)
 
         file.read(4)  # Padding?
 

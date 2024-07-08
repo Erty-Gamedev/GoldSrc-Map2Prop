@@ -222,8 +222,8 @@ class JmfReader(BaseReader):
             brushes.append(self.readbrush(file))
 
         if not brushes:
-            properties['origin'] = origin
-            
+            properties['origin'] = ' '.join(f"{p:.6g}" for p in origin)
+
         return Entity(classname, properties, brushes)
 
     def readbrush(self, file: BufferedReader) -> Brush:
