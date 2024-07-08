@@ -95,6 +95,8 @@ def triangulate(polygon: List[Vector3D]
         a generator of triangles (tuple of three Vector3D)
     """
 
+    polygon = [p for p in polygon]
+
     normal = polygon_normal(polygon)
     i: int = 0
     while len(polygon) > 2:
