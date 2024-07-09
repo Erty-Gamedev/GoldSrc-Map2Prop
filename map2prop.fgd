@@ -13,6 +13,7 @@
 	gamma(string) : "Gamma (default 1.8)" : "1.8"
 	smoothing(string) : "Smoothing threshold (0 disables)" : "60.0"
 	scale(string) : "Scale" : "1.0"
+	qc_flags(integer) : "Flags" : 0
 	parent_model(string) : "Template prop"
 	own_model(choices) : "Export as its own model" : 1 =
 	[

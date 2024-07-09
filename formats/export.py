@@ -39,6 +39,7 @@ class RawModel:
     rotation: float
     maskedtextures: List[str]
     rename_chrome: bool
+    qc_flags: str
 
 
 def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
@@ -106,6 +107,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
         rotation = config.qc_rotate
         smoothing = config.smoothing
         chrome = config.renamechrome
+        qc_flags = ''
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
                 scale = float(entity.properties['scale'])
@@ -124,6 +126,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             # TODO: Check chrome textures have valid dimensions or set rename chrome on them
 
+            if 'qc_flags' in entity.properties and entity.properties['qc_flags']:
+                qc_flags = entity.properties['qc_flags']
+
         if outname not in models:
             models[outname] = RawModel(
                 outname=outname,
@@ -138,7 +143,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 scale=scale,
                 rotation=rotation,
                 maskedtextures=[],
-                rename_chrome=chrome
+                rename_chrome=chrome,
+                qc_flags=qc_flags
             )
 
         origin_found: bool = False
@@ -383,6 +389,8 @@ def write_qc(model: RawModel, outputdir: Path) -> None:
         else:
             offset = config.qc_offset
 
+        qc_flags = f"$flags {model.qc_flags}\n" if model.qc_flags else ''
+
         bbox = ''
         if model.bounds != (Vector3D.zero(), Vector3D.zero()):
             bmin = model.bounds[0] - model.offset
@@ -404,7 +412,7 @@ $cd "."
 $cdtexture "."
 $scale {model.scale}
 $origin {offset} {model.rotation}
-{rendermodes}{bbox}{cbox}$gamma {config.qc_gamma}
+{qc_flags}{rendermodes}{bbox}{cbox}$gamma {config.qc_gamma}
 $body studio "{model.outname}"
 $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
 """)
