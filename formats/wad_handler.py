@@ -24,7 +24,7 @@ class WadHandler:
         'aaatrigger', 'black_hidden', 'clipbevelbrush',
         'cliphull1', 'cliphull2', 'cliphull3',
         'contentempty', 'hint', 'noclip', 'null',
-        'skip', 'sky', 'solidhint',
+        'skip', 'solidhint',
     ]
     TOOL_TEXTURES = [
         'bevel', 'boundingbox', 'clipbevel', 'clip',
