@@ -536,6 +536,8 @@ def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
             new_raw = "{\n" f"\"classname\" \"{new_class}\"\n"\
                 f"\"model\" \"{kvs['model']}\"\n"\
                 f"\"spawnflags\" \"{spawnflags}\"\n"
+            if 'targetname' in kvs and kvs['targetname']:
+                new_raw += f"\"targetname\" \"{kvs['targetname']}\""
             if 'angles' in kvs and kvs['angles']:
                 new_raw += f"\"angles\" \"360 {kvs['angles'].split(' ')[1]} 360\"\n"
             if 'origin' in kvs and kvs['origin']:
