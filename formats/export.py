@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from formats.map_reader import MapReader, Entity
+from formats.map_reader import MapReader, BaseEntity
 from geoutil import (Polygon, Vertex, Vector3D, geometric_center,
                      flip_faces, deg2rad, point_in_bounds,
                      smooth_near_normals, smooth_all_normals)
@@ -27,7 +27,7 @@ CONVERT_TO_MAPPING: Final[Dict[int, str]] = {
 @dataclass
 class RawModel:
     outname: str
-    subdir: Path
+    subdir: str
     polygons: List[Polygon]
     offset: Vector3D
     bounds: Tuple[Vector3D, Vector3D]
@@ -121,6 +121,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             if 'chrome' in entity.properties:
                 chrome = int(entity.properties['chrome']) == 1
+            
+            # TODO: Check chrome textures have valid dimensions or set rename chrome on them
 
         if outname not in models:
             models[outname] = RawModel(
@@ -467,7 +469,7 @@ def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
 
     # Not a true edict as we all know and love.
     # It is just to map func_map2prop entities to their targetnames
-    edict: Dict[str, Entity] = {}
+    edict: Dict[str, BaseEntity] = {}
     for entity in filereader.entities:
         if entity.classname != 'func_map2prop':
             continue

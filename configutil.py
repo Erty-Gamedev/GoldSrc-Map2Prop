@@ -66,12 +66,12 @@ class ConfigUtil:
         self._autocompile:   bool = True
         self._timeout:       float = 60.0
         self._autoexit:      bool = False
-        self._qc_outputname: Optional[str] = None
+        self._qc_outputname: str = ''
         self._qc_scale:      float = 1.0
         self._qc_gamma:      float = 1.8
         self._qc_offset:     str = '0 0 0'
         self._qc_rotate:     float = 270.0
-        self._renamechrome:  Optional[bool] = None
+        self._renamechrome:  bool = False
 
         self.load_configini()
         self.argparser = argparse.ArgumentParser(
@@ -226,7 +226,10 @@ class ConfigUtil:
         
         self._autoexit = self.mapcompile or self.args.autoexit or configini.getboolean('autoexit', False) 
         
-        self._qc_outputname = self.args.outputname if self.args.outputname else ''
+        if self.args.outputname:
+            self._qc_outputname = self.args.outputname
+        else:
+            self._qc_outputname = ''
 
         self._qc_scale = self.args.scale if self.args.scale else 1.0
 

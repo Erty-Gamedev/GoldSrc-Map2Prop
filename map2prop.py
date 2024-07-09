@@ -29,7 +29,7 @@ class InvalidFileException(Exception):
 def main() -> None:
     if not config.input:
         logger.warning('No input. Please drag-and-drop a file onto the executable')
-        config.app_exit(2)
+        return config.app_exit(2)
 
     filename = config.input
     filepath = Path(filename)
