@@ -34,6 +34,12 @@ class TestGeoutil(unittest.TestCase):
         result = geoutil.get_triples([1, 2, 3, 4, 5], True)
         self.assertEqual(expected, result)
 
+    def test_vectors_angle(self):
+        a = geoutil.Vector3D(0.8, 0.9, 1.0)
+        b = geoutil.Vector3D(1.0, 0.0, 0.0)
+        result = geoutil.vectors_angle(b, a)
+        self.assertAlmostEqual(1.0343, result, 4)
+
     def test_segment_cross(self):
         expected = geoutil.Vector3D(12, 12, 12)
 
