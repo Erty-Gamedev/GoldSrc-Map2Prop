@@ -122,7 +122,7 @@ def lerp(a: float, b: float, t: float) -> float:
 def vectors_angle(a: Vector3D, b: Vector3D) -> float:
     """Returns the angle between two vectors"""
     a, b = a.normalized, b.normalized
-    return acos(a.dot(b) / a.mag * b.mag)
+    return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
 
 
 def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D) -> float:

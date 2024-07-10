@@ -45,7 +45,7 @@ class Face(BaseFace):
         self._texture = Texture(texture)
         self._normal = plane_normal(points[:3])
 
-        for triangle in triangulate(self._points):
+        for triangle in triangulate(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:

@@ -83,7 +83,7 @@ class TestGeoutil(unittest.TestCase):
         expected = [
             (box['A'], box['C'], box['D']), (box['A'], box['D'], box['B'])
         ]
-        result = list(triangulate(boxfaces['x']))
+        result = list(triangulate(boxfaces['x'], geoutil.Vector3D(1, 0, 0)))
 
         self.assertEqual(expected, result)
 

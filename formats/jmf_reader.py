@@ -41,7 +41,7 @@ class Face(BaseFace):
             ))
             self._points.append(Vector3D(*face_vertex.vertex))
         
-        for triangle in triangulate(self._points):
+        for triangle in triangulate(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:

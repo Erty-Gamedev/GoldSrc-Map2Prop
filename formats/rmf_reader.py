@@ -36,7 +36,7 @@ class Face(BaseFace):
                 self._normal
             ))
 
-        for triangle in triangulate(self.points):
+        for triangle in triangulate(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:
