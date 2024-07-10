@@ -87,7 +87,7 @@ class ConfigUtil:
         self.argparser.exit(status, message)
 
     def load_configini(self) -> None:
-        self.configini = configparser.ConfigParser(default_section='AppConfig')
+        self.configini = configparser.ConfigParser(default_section='default')
         if self.filepath.exists():
             self.configini.read(self.filepath)
         else:
@@ -179,7 +179,7 @@ class ConfigUtil:
         if self.args.game_config:
             self._game_config = self.args.game_config
         else:
-            self._game_config = self.configini['AppConfig'].get('game config', 'AppConfig')
+            self._game_config = self.configini['default'].get('game config', 'default')
 
         configini = self.configini[self.game_config]
 
@@ -295,7 +295,7 @@ class ConfigUtil:
                 / self.configini[game].get('mod', ''))
 
     def create_default_config(self):
-        self.configini['AppConfig'] = {
+        self.configini['default'] = {
             'smoothing threshold': 60.0,
             'rename chrome': 'no',
             'output directory': r'/converted',
