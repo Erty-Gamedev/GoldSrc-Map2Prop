@@ -101,17 +101,18 @@ class ConfigUtil:
         self.argparser.add_argument(
             '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
             help='display current version')
-
-        general = self.argparser.add_argument_group('general arguments')
-        general.add_argument(
-            '-o', '--output', type=str, metavar='',
-            help='specify an output directory')
-        general.add_argument(
+        self.argparser.add_argument(
+            '-a', '--autocompile', action='store_true',
+            help='compile model after conversion')
+        self.argparser.add_argument(
+            '-x', '--autoexit', action='store_true',
+            help='don\'t ask for input after finish')
+        self.argparser.add_argument(
             '-c', '--mapcompile', action='store_true',
             help='modify .map input to replace func_map2prop with model entities after compile'
         )
 
-        forceformat = general.add_mutually_exclusive_group()
+        forceformat = self.argparser.add_mutually_exclusive_group()
         forceformat.add_argument(
             '--forcermf', action='store_true',
             help='when using --mapcompile forces the use of the .rmf file as input instead of .map'
@@ -120,6 +121,11 @@ class ConfigUtil:
             '--forcejmf', action='store_true',
             help='when using --mapcompile forces the use of the .jmf file as input instead of .map'
         )
+
+        general = self.argparser.add_argument_group('general arguments')
+        general.add_argument(
+            '-o', '--output', type=str, metavar='',
+            help='specify an output directory')
 
         general.add_argument(
             '-g', '--game_config', type=str, metavar='',
@@ -138,14 +144,8 @@ class ConfigUtil:
             help='angle threshold for applying smoothing '\
                 '(use 0.0 to smooth all edges)')
         general.add_argument(
-            '-a', '--autocompile', action='store_true',
-            help='compile model after conversion')
-        general.add_argument(
             '-t', '--timeout', type=float, default=60.0, metavar='',
             help='timeout for running studiomdl.exe (default %(default)s)')
-        general.add_argument(
-            '-x', '--autoexit', action='store_true',
-            help='don\'t ask for input after finish')
 
         qc = self.argparser.add_argument_group('.qc options')
         qc.add_argument(
