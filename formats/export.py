@@ -86,7 +86,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 own_model = True
                 outname = f"{filename}_{n}"
                 if 'outname' in entity.properties and entity.properties['outname']:
-                    outname = f"{entity.properties['outname']}"
+                    outname = f"{entity.properties['outname']}".replace('.mdl', '')
                     if entity.properties['outname'] in models:
                         outname = f"{outname}_{n}"
                         n += 1
