@@ -4,8 +4,8 @@ from pathlib import Path
 from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from triangulate.triangulate import triangulate
-from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo, unique_vectors,
-                     intersection_3planes, sort_vertices, is_vertex_outside_planes)
+from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
+                     unique_vectors, sort_vertices, faces_from_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
@@ -142,7 +142,9 @@ class MapReader(BaseReader):
             else:
                 raise Exception(f"Unexpected face data: {line}")
 
-        faces = self.faces_from_planes(planes)
+        faces = [Face(f['vertices'], f['texture'], f['normal'])
+                for f in faces_from_planes(planes) if not
+                self.wadhandler.skip_face(f['texture'].name)]
 
         return Brush(faces, raw)
     
@@ -187,41 +189,6 @@ class MapReader(BaseReader):
         )
 
         return Plane(plane_points, texture)
-
-    def faces_from_planes(self, planes: List[Plane]) -> List[Face]:
-        num_planes = len(planes)
-        faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
-
-        for i in range(num_planes):
-            for j in range(i + 1, num_planes):
-                for k in range(j + 1, num_planes):
-                    if i == j == k:
-                        continue
-
-                    vertex = intersection_3planes(
-                        planes[i], planes[j], planes[k]
-                    )
-
-                    if vertex is False:
-                        continue
-
-                    if is_vertex_outside_planes(vertex, planes):
-                        continue
-
-                    faces[i]['vertices'].append(vertex)
-                    faces[j]['vertices'].append(vertex)
-                    faces[k]['vertices'].append(vertex)
-
-                    faces[i]['texture'] = planes[i].texture
-                    faces[j]['texture'] = planes[j].texture
-                    faces[k]['texture'] = planes[k].texture
-
-                    faces[i]['normal'] = planes[i].normal
-                    faces[j]['normal'] = planes[j].normal
-                    faces[k]['normal'] = planes[k].normal
-
-        return [Face(f['vertices'], f['texture'], f['normal'])
-                for f in faces if not self.wadhandler.skip_face(f['texture'].name)]
 
     def get_texture(self, texture: str) -> ImageInfo:
         if texture not in self.textures:

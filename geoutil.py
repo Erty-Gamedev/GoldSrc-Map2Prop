@@ -2,7 +2,7 @@
 Geometric functions and classes
 """
 
-from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
+from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final, Any
 from dataclasses import dataclass
 from vector3d import Vector3D, EPSILON
 from math import sqrt, cos, sin, acos
@@ -343,6 +343,40 @@ def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
 
     return sorted
 
+
+def faces_from_planes(planes: List[Plane]) -> List[Dict[str, Any]]:
+    num_planes = len(planes)
+    faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
+
+    for i in range(num_planes):
+        for j in range(i + 1, num_planes):
+            for k in range(j + 1, num_planes):
+                if i == j == k:
+                    continue
+
+                vertex = intersection_3planes(
+                    planes[i], planes[j], planes[k]
+                )
+
+                if vertex is False:
+                    continue
+
+                if is_vertex_outside_planes(vertex, planes):
+                    continue
+
+                faces[i]['vertices'].append(vertex)
+                faces[j]['vertices'].append(vertex)
+                faces[k]['vertices'].append(vertex)
+
+                faces[i]['texture'] = planes[i].texture
+                faces[j]['texture'] = planes[j].texture
+                faces[k]['texture'] = planes[k].texture
+
+                faces[i]['normal'] = planes[i].normal
+                faces[j]['normal'] = planes[j].normal
+                faces[k]['normal'] = planes[k].normal
+
+    return faces
 
 
 def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:
