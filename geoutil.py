@@ -299,34 +299,50 @@ def bounds_from_points(points: List[Vector3D]) -> Bounds:
     return bmin, bmax
 
 
+def unique_vectors(vectors: List[Vector3D]) -> List[Vector3D]:
+    unique: List[Vector3D] = []
+    for vector in vectors:
+        is_unique = True
+        for u in unique:
+            if vector == u:
+                is_unique = False
+                break
+        if is_unique:
+            unique.append(vector)
+
+    return unique
+
+
 def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
     """Returns a sorted list of vertices from an unsorted list"""
-    
-    center = geometric_center(vertices)
     num_vertices = len(vertices)
+    center = geometric_center(vertices)
+    sorted = [vertices[0]]
+    rest = vertices[1:]
 
-    for i in range(num_vertices - 2):
-        a = (vertices[i] - center).normalized
-        p = HessianPlane(*points_to_plane(*[vertices[i], center, center + normal]))
+    while len(sorted) < num_vertices:
+        a = sorted[-1]
+        p = HessianPlane(*points_to_plane(*[a, center, center + normal]))
 
-        angle_smallest = -1
+        smallest_angle = -1
         smallest = -1
+        for n in range(0, len(rest)):
+            b = rest[n]
+            dot_normal = (a-center).normalized.dot((b-center).normalized)
+            
+            if p.point_relation(b) > 0 and dot_normal > smallest_angle:
+                smallest_angle = dot_normal
+                smallest = n
 
-        for j in range(i + 1, num_vertices):
-            if p.point_relation(vertices[j]) != -1:
-                b = (vertices[j] - center).normalized
-                angle = a.dot(b)
-                if angle > angle_smallest:
-                    angle_smallest = angle
-                    smallest = j
+        sorted.append(rest[smallest])
+        rest.pop(smallest)
 
-        vertices[i+1], vertices[smallest] = vertices[smallest], vertices[i+1]
-
-    sorted_normal = plane_normal(vertices[:3])
+    sorted_normal = plane_normal(sorted[:3])
     if normal.dot(sorted_normal) < 0:
-        vertices = list(reversed(vertices))
+        sorted = list(reversed(sorted))
 
-    return vertices
+    return sorted
+
 
 
 def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:

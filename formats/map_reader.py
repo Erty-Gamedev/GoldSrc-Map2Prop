@@ -4,7 +4,7 @@ from pathlib import Path
 from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from triangulate.triangulate import triangulate
-from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
+from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo, unique_vectors,
                      intersection_3planes, sort_vertices, is_vertex_outside_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
@@ -12,7 +12,7 @@ from formats.wad_handler import WadHandler
 
 class Face(BaseFace):
     def __init__(self, points: List[Vector3D], texture: Texture, normal: Vector3D):
-        self._points = sort_vertices(points, normal)
+        self._points = sort_vertices(unique_vectors(points), normal)
         self._vertices = []
         self._polygons = []
         self._texture = texture
