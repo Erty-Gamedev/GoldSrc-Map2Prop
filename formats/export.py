@@ -124,8 +124,6 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             if 'chrome' in entity.properties:
                 chrome = int(entity.properties['chrome']) == 1
             
-            # TODO: Check chrome textures have valid dimensions or set rename chrome on them
-
             if 'qc_flags' in entity.properties and entity.properties['qc_flags']:
                 qc_flags = entity.properties['qc_flags']
 
