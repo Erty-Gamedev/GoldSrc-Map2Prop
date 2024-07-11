@@ -83,7 +83,7 @@ If the bug/feature is new, feel free to open a new issue. Be as detailed and spe
 If it's a bug report, please include steps to reproduce the issue. Any log files (from /logs) or input map files will be very helpful in investigating the bug.
 
 ## Contributing
-Please see [CONTRIBUTING.md](/CONTRIBUTING.md).
+Please see [CONTRIBUTING.md](./.github/CONTRIBUTING.md).
 
 ## Special Thanks
 
