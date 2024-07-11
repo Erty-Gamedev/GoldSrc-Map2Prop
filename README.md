@@ -4,83 +4,89 @@
 
 GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files, as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that can then be compiled into a GoldSrc format studio model without the hassle of using an 3D editor.
 
-### Supported platforms
-Currently only supported on Windows.<br>
-Linux support is planned for a future release.
+It can also be seamlessly integrated with the map compilation process, essentially running as its own compilation tool that'll convert, compile, and replace the brushwork with model props automatically.
 
-## Installation
+For more detailed documentation you can check out [Map2Prop Docs](https://erty-gamedev.github.io/Docs-Map2Prop/).
 
-No installation required, simply get the latest executable from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases) and place it in your folder of choice.
+## Requirements
+
+To use the auto-compile feature one must add a valid reference to a [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) either in [config.ini](#configini) (recommended) or using the commandline option (`-m`, `--studiomdl`).
+
+#### Why is the Sven Co-op studiomdl.exe required for compilation?
+
+The reason for requiring the Sven Co-op studiomdl.exe for compiling these models is because of how map textures work, i.e. they may tile or otherwise extend beyond the UV bounds. Legacy studiomdl.exe compilers will clamp UV coordinates which is no good for this. Additionally, legacy compilers cannot handle CHROME textures that aren't 64x64. Don't worry, the compiled model will still work perfectly fine in vanilla Half-Life.
 
 ## How To Use
 
-For most basic use you just need to ensure all required textures are in the same folder as the project file (the .rmf/.jmf/.obj file), or make use of automatic .wad extraction (explained further down). Then simply drag your project file onto the executable.
+Either download the latest archive from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases/latest) (recommended), or clone this repo and either call map2prop.py directly using a Python launcher or build the project yourself (see [Building](#building)) to create your own executable.
 
-You may also use the CLI interface. Run `Map2Prop.exe --help` to list all available options.
+### Textures
 
-The application will produce a .smd file as well as generate a .qc file already filled out for as a basic static prop.
+Map2Prop needs the textures that are used in the prop to create the models. It will look for the raw BMP textures in both the input file's directory and the output directory, as well as in WAD archives in these directories and the configured game config's mod folder and automatically extract these.<br />
+Additionally one can feed a text file containing paths to WAD archives (one per line) to the commandline argument (`-w`, `--wad_list`) or fill out a `wad list` in [config.ini](#configini).
 
-#### Note: Model origin
+In other words, set the `steam directory` and the relevant `game` and `mod` in [config.ini](#configini) and Map2Prop will take care of extracting the textures for you.
 
-The model will use the project file's origin as its own origin. Typically it's preferred to have the origin at the center bottom of the model to make it more convenient to place the model in-editor. This can also be adjusted with the `--offset` command line option.
+### Drag & Drop
 
-### Automatic .wad extraction
+A simple way to use Map2Prop is to place the prop(s) to be converted in their own map and drag that map onto the executable.
 
-Map2Prop is able to read and extract textures from .wad packages found in a wad list defined in `config.ini` or by command line, from a game/mod defined in `config.ini`, or within the project file's directory, prioritised in that order. The application will automatically do this for all texture files not found within the project file's directory.
+All brushes will be merged with the worldspawn model unless part of a func_map2prop entity with the `own_model` key set to `1`, which will be placed in their own models.
 
-### Smoothing
+### Map Compile
 
-Smooth shading and the angle threshold for smoothing can be set in config.ini and/or command line, but may also be set by suffixing the file name with `_smooth{x}` where `{x}` is the optional parameter for angle threshold. Leaving out the threshold parameter or setting it to zero will smooth all edges of the model.
+By adding the `map2prop.fgd` to the map editor's game configuration one can tie brushes to the `func_map2prop` entity and add the Map2Prop executable to the compilation process (for example Hammer/J.A.C.K's Run Map Expert mode) before/above the CSG compiler and in arguments put `"$path/$file" --mapcompile`.
 
-Example:<br>`mymodel_smooth60.rmf` will have smooth shading applied to all edges less than 60° apart.
+**Important:** Ensure *Use Process Window* or *Wait for Termination* (or similar) is checked to make sure Map2Prop finishes before the rest of the process continues.
 
-### Skip faces
+### Commandline Interface
 
-Neither input format does any "inside face" culling. This is not the same as backface culling, but rather the faces inside of objects will typically remain in these formats.
-I recommend covering all unseen faces (as well as any other faces you want to skip) with *NULL* texture as these will be stripped out during the process.
+For advanced usage one might run Map2Prop through a shell or command prompt.
 
-### Autocompile
+To get started with the CLI one can either run Map2Prop with no arguments or call it with `--help` to get a list of available arguments.
 
-If the path to a [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) is set up either in `config.ini` or through command line option (`-m`, `--studiomdl`), you may use autocompile (enabled by default in `config.ini`) to compile the .smd file into a GoldSrc .mdl model at the end of the conversion process.
+## config.ini
 
-### Exporting .obj file from J.A.C.K
+The config file `config.ini` allows one to adjust various defaults and set up paths to the model compiler and game directories. Each separate game configuration section (preceeded by the section's name in square brackets, e.g. `[halflife]`) will override the default settings when that configuration is active. The active game configuration can either be set in the default's `game config` key, or by using the commandline option (`-g`, `--game_config`).
 
-Either copy your object to a new, empty file or select the object in J.A.C.K and go to *File* -> *Export to OBJ...*
+For example, when using the map compile feature one can add the `--game_config my_mod` to ensure the models end up in */Half-Life/my_mod/models/*
 
-## Reporting Problems/Bugs
+## Building
 
-Please notify Erty (erty.gamedev@gmail.com) along with the project file (either .map/.rmf/.jmf, or .obj and its associated .mtl file) that was used as well as the logs/ folder produced by the executable.
+It's recommended to create a virtual environment and install the requirements from *requirements.txt*, for example by using VENV and PIP (https://docs.python.org/3/tutorial/venv.html).
 
-## Features
+After setting up a virtual environment one should run
+```shell
+python -m pip install -r requirements.txt
+```
 
-* Automatic triangulation of all >3-gons.
-* Skipping of faces covered in NULL texture, as well as several other tool textures.
-* Faces covered in \{-prefixed textures will automatically be given the masked (transparent) rendermode.
-* The project file directory will be checked for existence of any referenced textures, and if missing will attempt to find and extract it from .wad packages in the wad list and game/mod directory specified in `config.ini` and project file directory, and if failed it will notify the user of missing textures.
-* Smooth shading that can be enabled with or without angle threshold using filename suffix parameter (`_smooth{x}`) or in `config.ini`.
-* CLI interface (run `Map2Prop.exe --help` to see a list of arguments).
+Once the virtual environment has been set up one can run *makeexe.py* to run PyInstaller to create the executable
 
-### Limitations
+```
+python makeexe.py
+```
 
-For the most part there are no geometric limitations other than the typical GoldSrc model format limits (e.g. max 2048 vertices per .smd file). Any textures that can be used in a map can also be used in models.
+By default it will be placed in *project_root/dist/*
 
-Unlike maps, concave brushes are perfectly fine for Map2Prop. Just be aware that ambigious non-triangular faces may not be triangulated the way you want.
+## Bug Reports and Feature Suggestions
 
-## Why is the Sven Co-op studiomdl.exe required for compilation?
+Take a look at the [Issues](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/issues) page and make sure the bug/feature hasn't been already been posted.
 
-The reason for requiring the Sven Co-op studiomdl.exe for compiling these models is because of how map textures work, i.e. they may tile or otherwise extend beyond the UV bounds. Legacy studiomdl.exe compilers will clamp UV coordinates which is no good for this. Don't worry, the compiled model will still work perfectly fine in vanilla Half-Life.
+If the bug/feature is new, feel free to open a new issue. Be as detailed and specific as you can be.<br />
+If it's a bug report, please include steps to reproduce the issue. Any log files (from /logs) or input map files will be very helpful in investigating the bug.
 
-## Future
-
-Currently planning on using an option to split up an input file into several models based on, for example, VISGroup or tied entity. Leaning towards the latter as the .jmf format's ability to nest VISGroup might make it complicated.
+## Contributing
+Please see [CONTRIBUTING.md](/CONTRIBUTING.md).
 
 ## Special Thanks
 
-Thanks to Captain P for all the help and advice, as well as showing me the .rmf/.jmf parsing code from MESS!
+Thanks to Captain P for all the help and advice, as well as showing me the .rmf/.jmf parsing code from MESS (and of course many thanks to MESS for being an excellent resource).
 Thanks to Penguinboy for the tips and being very helpful with any questions I've had.
+Thanks to Kimilil for help with testing the release candidate and providing excellent feedback and ideas.
 
 ### Alpha Testers
 Many thanks goes out to the kind people who helped me test this program and provide useful feedback and suggestions during its alpha stage:
 * SV BOY
 * TheMadCarrot
 * Descen
+* Kimilil
