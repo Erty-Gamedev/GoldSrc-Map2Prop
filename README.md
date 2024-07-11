@@ -8,6 +8,13 @@ It can also be seamlessly integrated with the map compilation process, essential
 
 For more detailed documentation you can check out [Map2Prop Docs](https://erty-gamedev.github.io/Docs-Map2Prop/).
 
+### Windows Defender False Positive
+
+Unfortunately Windows Defender (and potentially other antiviruses) might flag Map2Prop.exe as a trojan. This is a consequence of using the PyInstaller to package the application.<br />
+I am trying out self-signing the application to see if it makes a difference, but it might take a while before I become a trusted source. You can help out in the meantime to report it as a false positive.
+
+You may add an exception for Map2Prop.exe in your antivirus, or if you still don't trust it you're welcome to clone the project, check the files, and [build](#building) it yourself.
+
 ## Requirements
 
 To use the auto-compile feature one must add a valid reference to a [Sven Co-op studiomdl.exe](http://www.the303.org/backups/sven_studiomdl_2019.rar) either in [config.ini](#configini) (recommended) or using the commandline option (`-m`, `--studiomdl`).

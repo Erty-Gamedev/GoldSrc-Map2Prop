@@ -29,7 +29,7 @@ StringFileInfo(
   [
   StringTable(
     u'040904B0',
-    [StringStruct(u'CompanyName', u'Erty'),
+    [StringStruct(u'CompanyName', u''),
     StringStruct(u'FileDescription', u'GoldSrc Map2Prop'),
     StringStruct(u'FileVersion', u'1.0.0.0'),
     StringStruct(u'InternalName', u'Map2Prop'),
