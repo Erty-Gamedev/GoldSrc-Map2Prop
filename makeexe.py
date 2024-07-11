@@ -10,4 +10,5 @@ PyInstaller.__main__.run([
     '-c',
     '-i', 'm2p.ico',
     '-n', 'Map2Prop',
+    '--version-file', 'version_win.txt',
 ])
