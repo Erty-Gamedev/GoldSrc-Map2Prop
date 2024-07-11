@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import Tuple
 from io import BufferedReader
 from struct import unpack

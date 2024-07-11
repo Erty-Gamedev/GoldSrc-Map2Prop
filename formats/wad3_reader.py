@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import Dict
 from pathlib import Path
 from PIL import Image

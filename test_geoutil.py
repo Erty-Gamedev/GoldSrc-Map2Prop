@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
-@author: Erty
+Tests for geometric functions
 """
 
 import unittest
 import geoutil
+from triangulate.triangulate import triangulate
 
 # Simple test box of size 2x2x2
 box = {
@@ -33,6 +33,12 @@ class TestGeoutil(unittest.TestCase):
         expected = [[1, 2, 3], [2, 3, 4], [3, 4, 5], [4, 5, 1]]
         result = geoutil.get_triples([1, 2, 3, 4, 5], True)
         self.assertEqual(expected, result)
+
+    def test_vectors_angle(self):
+        a = geoutil.Vector3D(0.8, 0.9, 1.0)
+        b = geoutil.Vector3D(1.0, 0.0, 0.0)
+        result = geoutil.vectors_angle(b, a)
+        self.assertAlmostEqual(1.0343, result, 4)
 
     def test_segment_cross(self):
         expected = geoutil.Vector3D(12, 12, 12)
@@ -73,11 +79,11 @@ class TestGeoutil(unittest.TestCase):
             result = geoutil.points_to_plane(*face[:3])
             self.assertEqual(expected[side], result)
 
-    def test_triangulate_face(self):
+    def test_triangulate(self):
         expected = [
-            [box['A'], box['C'], box['D']], [box['A'], box['D'], box['B']]
+            (box['A'], box['C'], box['D']), (box['A'], box['D'], box['B'])
         ]
-        result = geoutil.triangulate_face(boxfaces['x'])
+        result = list(triangulate(boxfaces['x'], geoutil.Vector3D(1, 0, 0)))
 
         self.assertEqual(expected, result)
 

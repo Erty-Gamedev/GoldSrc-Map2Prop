@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed May 24 17:22:48 2023
-
-@author: Erty
+Programmatically call PyInstaller to build the executable
 """
 
 import PyInstaller.__main__
@@ -13,4 +10,5 @@ PyInstaller.__main__.run([
     '-c',
     '-i', 'm2p.ico',
     '-n', 'Map2Prop',
+    '--version-file', 'version_win.txt',
 ])

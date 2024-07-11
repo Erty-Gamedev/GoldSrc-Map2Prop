@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
 from typing import List, Union, Tuple, Dict, Self
 from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
-from configutil import config
-from geoutil import Polygon, Vertex, ImageInfo, Texture, triangulate_face, plane_normal
+from triangulate.triangulate import triangulate
+from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
@@ -38,7 +36,7 @@ class Face(BaseFace):
                 self._normal
             ))
 
-        for triangle in triangulate_face(self.points):
+        for triangle in triangulate(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:
@@ -89,7 +87,7 @@ class RmfReader(BaseReader):
 
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
-        self.filedir = self.filepath.parents[0]
+        self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
@@ -147,11 +145,11 @@ class RmfReader(BaseReader):
 
     def readvisgroup(self, file: BufferedReader) -> None:
         read_ntstring(file, 128)  # Name
-        read_colour(file)  # Editor colour
-        file.read(1)  # Padding byte
-        read_int(file)  # Visgroup id
-        read_bool(file)  # Editor visibility
-        file.read(3)  # Padding bytes
+        read_colour(file)         # Editor colour
+        file.read(1)              # Padding byte
+        read_int(file)            # Visgroup id
+        read_bool(file)           # Editor visibility
+        file.read(3)              # Padding bytes
 
     def readobject(self, file: BufferedReader
         ) -> Union[Brush, Entity, Group]:
@@ -271,7 +269,9 @@ class RmfReader(BaseReader):
         if 'spawnflags' not in properties:
             properties['spawnflags'] = str(spawnflags)
 
-        read_vector3D(file)  # Origin for point entities
+        origin = read_vector3D(file)  # Origin for point entities
+        if not brushes:
+            properties['origin'] = ' '.join(f"{p:.6g}" for p in origin)
 
         file.read(4)  # Padding?
 

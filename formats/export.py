@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Final
 import os, subprocess
 from shutil import copy2
 from pathlib import Path
@@ -9,16 +7,27 @@ from dataclasses import dataclass
 from formats.base_classes import BaseReader
 from configutil import config
 from formats.obj_reader import ObjReader
-from geoutil import (Polygon, Vertex, Vector3D,
+from formats.map_reader import MapReader, BaseEntity
+from geoutil import (Polygon, Vertex, Vector3D, geometric_center,
                      flip_faces, deg2rad, point_in_bounds,
                      smooth_near_normals, smooth_all_normals)
 
 logger = logging.getLogger(__name__)
 
 
+CONVERT_TO_MAPPING: Final[Dict[int, str]] = {
+    0: 'cycler',
+    1: 'cycler_sprite',
+    2: 'env_sprite',
+    3: 'item_generic',
+    4: 'monster_furniture',
+    5: 'monster_generic',
+}
+
 @dataclass
 class RawModel:
     outname: str
+    subdir: str
     polygons: List[Polygon]
     offset: Vector3D
     bounds: Tuple[Vector3D, Vector3D]
@@ -30,34 +39,75 @@ class RawModel:
     rotation: float
     maskedtextures: List[str]
     rename_chrome: bool
+    qc_flags: str
 
 
 def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
     models: Dict[str, RawModel] = {}
+    outputdir = config.output_dir
 
     n = 0
     for entity in filereader.entities:
+        if entity.classname == 'worldspawn':
+            if isinstance(filereader, MapReader):
+                entity.properties['_note'] = 'Modified by Map2Prop'
+            else:
+                entity.properties['wad'] = ';'.join(
+                    ['/' + p.resolve().relative_to(p.anchor).as_posix()\
+                     for p in filereader.wadhandler.used_wads])
+                entity.properties['_note'] = 'Produced by Map2Prop'
+
         if not entity.brushes:
             continue
-        outname = filename
+
+        if config.mapcompile and entity.classname != 'func_map2prop':
+            continue
+
+        outname = config.qc_outputname if config.qc_outputname else filename
         own_model = False
+        subdir = ''
 
         if entity.classname == 'func_map2prop':
             if 'spawnflags' in entity.properties and (int(entity.properties['spawnflags']) & 1):
                 continue  # Model is disabled
-            if 'own_model' in entity.properties and entity.properties['own_model'] == '1':
+            if 'parent_model' in entity.properties and entity.properties['parent_model']:
+                # Entity uses a template, model is defined in parent.
+                # We can still find its origin to store it on the entity.
+                for brush in entity.brushes:
+                    if not brush.all_points: continue  # Skip empty brushes
+
+                    if brush.is_tool_brush('origin'):
+                        ori = geometric_center(brush.bounds)
+                        entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
+                        break
+                continue  # Don't need to do anything else
+            if ('own_model' in entity.properties and entity.properties['own_model'] == '1')\
+                or config.mapcompile:
                 own_model = True
                 outname = f"{filename}_{n}"
                 if 'outname' in entity.properties and entity.properties['outname']:
-                    outname = f"{entity.properties['outname']}"
+                    outname = f"{entity.properties['outname']}".replace('.mdl', '')
                     if entity.properties['outname'] in models:
                         outname = f"{outname}_{n}"
                         n += 1
+            if 'subdir' in entity.properties and entity.properties['subdir']:
+                subdir = f"{entity.properties['subdir']}/"
         
+            if config.mapcompile and config.mod_path:
+                parent_folder = (config.mod_path / 'models' / outputdir / f"{subdir}{outname}.mdl").parent
+            else:
+                parent_folder = (outputdir / f"{subdir}{outname}.mdl").parent
+            
+            if not parent_folder.is_dir():
+                parent_folder.mkdir()
+
+            entity.properties['model'] = f"models/{outputdir}/{subdir}{outname}.mdl"
+
         scale = config.qc_scale
         rotation = config.qc_rotate
-        smoothing = config.smoothing_treshhold
+        smoothing = config.smoothing
         chrome = config.renamechrome
+        qc_flags = ''
         if entity.classname == 'worldspawn' or own_model:
             if 'scale' in entity.properties and entity.properties['scale']:
                 scale = float(entity.properties['scale'])
@@ -73,10 +123,14 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             
             if 'chrome' in entity.properties:
                 chrome = int(entity.properties['chrome']) == 1
+            
+            if 'qc_flags' in entity.properties and entity.properties['qc_flags']:
+                qc_flags = entity.properties['qc_flags']
 
         if outname not in models:
             models[outname] = RawModel(
                 outname=outname,
+                subdir=subdir,
                 polygons=[],
                 offset=Vector3D.zero(),
                 bounds=(Vector3D.zero(), Vector3D.zero()),
@@ -87,7 +141,8 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 scale=scale,
                 rotation=rotation,
                 maskedtextures=[],
-                rename_chrome=chrome
+                rename_chrome=chrome,
+                qc_flags=qc_flags
             )
 
         origin_found: bool = False
@@ -104,7 +159,9 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                                 f"near {brush.center}")
                     continue
                 if entity.classname == 'worldspawn' or own_model:
-                    models[outname].offset = brush.center
+                    ori = geometric_center(brush.bounds)
+                    models[outname].offset = ori
+                    entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
                 origin_found = True
                 continue  # Don't add brush
 
@@ -160,7 +217,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 def vertex_in_list(vertex: Vertex,
                    vertex_list: Dict[Vector3D, List[Vertex]]) -> Optional[Vector3D]:
     for other in vertex_list:
-        if vertex.v.eq(other):
+        if vertex.v == other:
             return other
     return None
 
@@ -233,10 +290,10 @@ def rename_chrome(models: Dict[str, RawModel], outputdir: Path) -> None:
 
             polygon.texture = new_name
 
-    return models
+    return None
 
 
-def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> None:
+def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> int:
     models = prepare_models(filename, filereader)
 
     apply_smooth(models)
@@ -247,7 +304,7 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
 
     if not num_models:
         logger.info(f"No props found in {filename}")
-        return
+        return 1
     if num_models == 1:
         logger.info(f"{filename} prepared.")
     else:
@@ -274,6 +331,8 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> No
         else:
             logger.info('Something went wrong during model compilation, check the logs.')
             logger.info(f"The following models did not compile: {', '.join(failed)}")
+    
+    return returncodes
 
 
 def write_smd(model: RawModel, outputdir: Path, filereader: BaseReader) -> None:
@@ -325,7 +384,10 @@ def write_qc(model: RawModel, outputdir: Path) -> None:
 
         if model.offset != Vector3D.zero():
             offset = f"{model.offset.x} {model.offset.y} {model.offset.z}"
-        else: offset = config.qc_offset
+        else:
+            offset = config.qc_offset
+
+        qc_flags = f"$flags {model.qc_flags}\n" if model.qc_flags else ''
 
         bbox = ''
         if model.bounds != (Vector3D.zero(), Vector3D.zero()):
@@ -343,16 +405,16 @@ def write_qc(model: RawModel, outputdir: Path) -> None:
  Automatically generated by Erty's GoldSrc Map2Prop.
 */
 
-$modelname {model.outname}.mdl
+$modelname {model.subdir}{model.outname}.mdl
 $cd "."
 $cdtexture "."
 $scale {model.scale}
 $origin {offset} {model.rotation}
-{rendermodes}{bbox}{cbox}$gamma {config.qc_gamma}
+{qc_flags}{rendermodes}{bbox}{cbox}$gamma {config.qc_gamma}
 $body studio "{model.outname}"
 $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
 """)
-        logger.info(f"Successfully written to {outputdir / model.outname}.qc")
+        logger.info(f"Successfully written to {outputdir}/{model.subdir}{model.outname}.qc")
     return
 
 
@@ -396,3 +458,92 @@ def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
             
         os.chdir(current_dir)
     return returncode
+
+    
+def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
+    filedir = filepath.parent
+    filename = filepath.stem
+
+    logger.info('Converting func_map2prop entities')
+
+    if isinstance(filereader, MapReader):
+        # Create a backup
+        copy2(filepath, filedir / f"{filename}.m2p")
+        logger.info(f"Created backup of MAP at {filedir}/{filename}.m2p")
+    else:
+        filepath = filedir / f"{filename}.map"
+
+    # Not a true edict as we all know and love.
+    # It is just to map func_map2prop entities to their targetnames
+    edict: Dict[str, BaseEntity] = {}
+    for entity in filereader.entities:
+        if entity.classname != 'func_map2prop':
+            continue
+
+        if not 'targetname' in entity.properties or not entity.properties['targetname']:
+            continue
+        
+        if entity.properties['targetname'] in edict:
+            logger.info('Naming conflict: Multiple func_map2prop '\
+                        f"entities with name '{entity.properties['targetname']}'. "\
+                        'Only the first one will be used as template parent')
+            continue
+        
+        # Reset entity angles, as they're baked into the model now
+        entity.properties['angles'] = '0 0 0'
+
+        edict[entity.properties['targetname']] = entity
+    
+
+    logger.info(f"Writing modified MAP to {filepath}")
+
+    # Convert func_map2prop entities
+    with filepath.open('w') as file:
+        for entity in filereader.entities:
+            if entity.classname != 'func_map2prop':
+                file.write(entity.raw)
+                continue
+
+            kvs = entity.properties
+
+            if 'spawnflags' in kvs and (int(kvs['spawnflags']) & 1):
+                continue  # Entity is disabled, skip
+
+            if 'parent_model' in kvs and kvs['parent_model']:
+                parent_model = kvs['parent_model']
+                if parent_model not in edict:
+                    logger.info(f"Entity with invalid template parent near {kvs['origin']}")
+                
+                parent = edict[parent_model]
+                kvs['model'] = parent.properties['model']
+            
+            new_class = 'env_sprite'
+            if 'convert_to' in kvs and kvs['convert_to']:
+                convert_to = kvs['convert_to']
+                if convert_to.isdigit() and int(convert_to) in CONVERT_TO_MAPPING:
+                    new_class = CONVERT_TO_MAPPING[int(convert_to)]
+                else:
+                    new_class = convert_to
+
+            spawnflags = 0
+            if new_class.startswith('monster_'):
+                spawnflags |= 16  # Prisoner
+            if new_class == 'monster_generic':
+                spawnflags |= 4  # Not solid
+            
+            new_raw = "{\n" f"\"classname\" \"{new_class}\"\n"\
+                f"\"model\" \"{kvs['model']}\"\n"\
+                f"\"spawnflags\" \"{spawnflags}\"\n"
+            if 'targetname' in kvs and kvs['targetname']:
+                new_raw += f"\"targetname\" \"{kvs['targetname']}\""
+            if 'angles' in kvs and kvs['angles']:
+                new_raw += f"\"angles\" \"360 {kvs['angles'].split(' ')[1]} 360\"\n"
+            if 'origin' in kvs and kvs['origin']:
+                new_raw += f"\"origin\" \"{kvs['origin']}\"\n"
+            new_raw += "}\n"
+
+            file.write(new_raw)
+
+    logger.info('MAP successfully written. Ready for CSG')
+
+    return None

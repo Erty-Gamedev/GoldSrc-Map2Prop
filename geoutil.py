@@ -1,21 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Geometric functions and classes
-
-@author: Erty
 """
 
-from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final
+from typing import List, Tuple, Union, Literal, Dict, TypeAlias, Final, Any
 from dataclasses import dataclass
-from vector3d import Vector3D
+from vector3d import Vector3D, EPSILON
 from math import sqrt, cos, sin, acos
-from triangulate.triangulate import triangulate
 
 
 PI: Final[float] = 3.141592653589793116
 DEG2RAD: Final[float] = PI / 180.0
 RAD2DEG: Final[float] = 180.0 / PI
-EPSILON: Final[float] = 1/(2**10)
 Bounds: TypeAlias = Tuple[Vector3D, Vector3D]
 
 
@@ -94,13 +89,6 @@ class Plane(HessianPlane):
         self.texture: Texture = texture
 
 
-class InvalidSolidException(Exception):
-    def __init__(self, message, vertices):
-        self.message = message
-        self.vertices = [(p[0], p[1], p[2]) for p in vertices]
-        super().__init__(f"{self.message}\nVertices:\n{self.vertices}")
-
-
 def get_triples(items: list, last_two_and_first: bool = True):
     triples = [items[i:i + 3] for i in range(len(items) - 2)]
     if last_two_and_first:
@@ -133,6 +121,7 @@ def lerp(a: float, b: float, t: float) -> float:
 
 def vectors_angle(a: Vector3D, b: Vector3D) -> float:
     """Returns the angle between two vectors"""
+    a, b = a.normalized, b.normalized
     return acos(clip(a.dot(b) / a.mag * b.mag, -1, 1))
 
 
@@ -223,17 +212,6 @@ def polygon_to_plane(polygon: list) -> tuple:
     return points_to_plane(*polygon[:3])
 
 
-def triangulate_face(polygon: list) -> List[List[Vector3D]]:
-    """Returns a list of triangulated polygons from the polygon"""
-    tris = []
-    try:
-        for tri in triangulate(polygon):
-            tris.append([Vector3D(*p) for p in tri])
-    except Exception as e:
-        raise InvalidSolidException(e, polygon)
-    return tris
-
-
 def sum_vectors(vectors: List[Vector3D]) -> Vector3D:
     return Vector3D(*[sum(v) for v in zip(*vectors)])
 
@@ -300,14 +278,9 @@ def intersection_3planes(p1: HessianPlane,
     ) / denominator
 
 
-def geometric_center(vertices: List[Vector3D]) -> Vector3D:
+def geometric_center(vectors: List[Vector3D]) -> Vector3D:
     """Returns the geometric center of the given vertices"""
-    center = Vector3D(0, 0, 0)
-
-    for vertex in vertices:
-        center += vertex
-
-    return center / len(vertices)
+    return sum_vectors(vectors) / len(vectors)
 
 
 def bounds_from_points(points: List[Vector3D]) -> Bounds:
@@ -326,34 +299,84 @@ def bounds_from_points(points: List[Vector3D]) -> Bounds:
     return bmin, bmax
 
 
+def unique_vectors(vectors: List[Vector3D]) -> List[Vector3D]:
+    unique: List[Vector3D] = []
+    for vector in vectors:
+        is_unique = True
+        for u in unique:
+            if vector == u:
+                is_unique = False
+                break
+        if is_unique:
+            unique.append(vector)
+
+    return unique
+
+
 def sort_vertices(vertices: List[Vector3D], normal: Vector3D) -> List[Vector3D]:
     """Returns a sorted list of vertices from an unsorted list"""
-    
-    center = geometric_center(vertices)
     num_vertices = len(vertices)
+    center = geometric_center(vertices)
+    sorted = [vertices[0]]
+    rest = vertices[1:]
 
-    for i in range(num_vertices - 2):
-        a = (vertices[i] - center).normalized
-        p = HessianPlane(*points_to_plane(*[vertices[i], center, center + normal]))
+    while len(sorted) < num_vertices:
+        a = sorted[-1]
+        p = HessianPlane(*points_to_plane(*[a, center, center + normal]))
 
-        angle_smallest = -1
+        smallest_angle = -1
         smallest = -1
+        for n in range(0, len(rest)):
+            b = rest[n]
+            dot_normal = (a-center).normalized.dot((b-center).normalized)
+            
+            if p.point_relation(b) > 0 and dot_normal > smallest_angle:
+                smallest_angle = dot_normal
+                smallest = n
 
-        for j in range(i + 1, num_vertices):
-            if p.point_relation(vertices[j]) != -1:
-                b = (vertices[j] - center).normalized
-                angle = a.dot(b)
-                if angle > angle_smallest:
-                    angle_smallest = angle
-                    smallest = j
+        sorted.append(rest[smallest])
+        rest.pop(smallest)
 
-        vertices[i+1], vertices[smallest] = vertices[smallest], vertices[i+1]
-
-    sorted_normal = plane_normal(vertices[:3])
+    sorted_normal = plane_normal(sorted[:3])
     if normal.dot(sorted_normal) < 0:
-        vertices = list(reversed(vertices))
+        sorted = list(reversed(sorted))
 
-    return vertices
+    return sorted
+
+
+def faces_from_planes(planes: List[Plane]) -> List[Dict[str, Any]]:
+    num_planes = len(planes)
+    faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
+
+    for i in range(num_planes):
+        for j in range(i + 1, num_planes):
+            for k in range(j + 1, num_planes):
+                if i == j == k:
+                    continue
+
+                vertex = intersection_3planes(
+                    planes[i], planes[j], planes[k]
+                )
+
+                if vertex is False:
+                    continue
+
+                if is_vertex_outside_planes(vertex, planes):
+                    continue
+
+                faces[i]['vertices'].append(vertex)
+                faces[j]['vertices'].append(vertex)
+                faces[k]['vertices'].append(vertex)
+
+                faces[i]['texture'] = planes[i].texture
+                faces[j]['texture'] = planes[j].texture
+                faces[k]['texture'] = planes[k].texture
+
+                faces[i]['normal'] = planes[i].normal
+                faces[j]['normal'] = planes[j].normal
+                faces[k]['normal'] = planes[k].normal
+
+    return faces
 
 
 def is_vertex_outside_planes(vertex, planes: List[Plane]) -> bool:

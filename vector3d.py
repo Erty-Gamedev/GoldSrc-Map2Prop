@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-@author: Erty
+3-Dimensional Vector class
 """
 
 from typing import Union, TypeAlias, Final
@@ -51,7 +50,7 @@ class Vector3D(list):
             self.x * b[1] - self.y * b[0]
         )
 
-    def eq(self, b) -> bool:
+    def __eq__(self, b) -> bool:
         return (
             abs(self.x - b[0]) < EPSILON and
             abs(self.y - b[1]) < EPSILON and
@@ -94,10 +93,10 @@ class Vector3D(list):
     def __rtruediv__(self, b): return self.__truediv__(b)
 
     def __str__(self):
-        return f"[{self.x:f}, {self.y:f}, {self.z:f}]"
+        return f"[{self.x:g}, {self.y:g}, {self.z:g}]"
 
     def __repr__(self):
-        return f"Vector3D({self.x:f}, {self.y:f}, {self.z:f})"
+        return f"Vector3D({self.x:g}, {self.y:g}, {self.z:g})"
 
     def __hash__(self): return hash(tuple(self))
 
