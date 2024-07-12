@@ -11,7 +11,7 @@ For more detailed documentation you can check out [Map2Prop Docs](https://erty-g
 ### Windows Defender False Positive
 
 Unfortunately Windows Defender (and potentially other antiviruses) might flag Map2Prop.exe as a trojan. This is a consequence of using the PyInstaller to package the application.<br />
-I am trying out self-signing the application to see if it makes a difference, but it might take a while before I become a trusted source. You can help out in the meantime to report it as a false positive.
+I am trying out self-signing the application to see if it makes a difference, but it might take a while before I become a trusted source. You can help out in the meantime by reporting it as a false positive.
 
 You may add an exception for Map2Prop.exe in your antivirus, or if you still don't trust it you're welcome to clone the project, check the files, and [build](#building) it yourself.
 
@@ -27,9 +27,11 @@ The reason for requiring the Sven Co-op studiomdl.exe for compiling these models
 
 Either download the latest archive from [Releases](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/releases/latest) (recommended), or clone this repo and either call map2prop.py directly using a Python launcher or build the project yourself (see [Building](#building)) to create your own executable.
 
+After that open config.ini and ensure the paths to the Steam installation and studiomdl.exe are set up correctly.
+
 ### Textures
 
-Map2Prop needs the textures that are used in the prop to create the models. It will look for the raw BMP textures in both the input file's directory and the output directory, as well as in WAD archives in these directories and the configured game config's mod folder and automatically extract these.<br />
+Map2Prop needs the texture files that are used in the prop to create the models. It will look for the raw BMP textures in both the input file's directory and the output directory, as well as in WAD archives in these directories and the configured game config's mod folder and automatically extract these.<br />
 Additionally one can feed a text file containing paths to WAD archives (one per line) to the commandline argument (`-w`, `--wad_list`) or fill out a `wad list` in [config.ini](#configini).
 
 In other words, set the `steam directory` and the relevant `game` and `mod` in [config.ini](#configini) and Map2Prop will take care of extracting the textures for you.
@@ -80,7 +82,7 @@ By default it will be placed in *project_root/dist/*
 Take a look at the [Issues](https://github.com/Erty-Gamedev/GoldSrc-Map2Prop/issues) page and make sure the bug/feature hasn't been already been posted.
 
 If the bug/feature is new, feel free to open a new issue. Be as detailed and specific as you can be.<br />
-If it's a bug report, please include steps to reproduce the issue. Any log files (from /logs) or input map files will be very helpful in investigating the bug.
+If it's a bug report, please include the steps for reproducing the issue. Any log files (from /logs) or input map files will be very helpful in investigating the bug.
 
 ## Contributing
 Please see [CONTRIBUTING.md](./.github/CONTRIBUTING.md).
