@@ -13,7 +13,7 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 
 
 @dataclasses.dataclass
@@ -59,6 +59,7 @@ class ConfigUtil:
         self._force_rmf:     bool = False
         self._force_jmf:     bool = False
         self._game_config:   str = ''
+        self._steamdir:      Optional[Path] = None
         self._studiomdl:     Optional[Path] = None
         self._wad_list:      List[Path] = []
         self._wad_cache:     int = 10
@@ -183,6 +184,9 @@ class ConfigUtil:
 
         configini = self.configini[self.game_config]
 
+        steamdir = configini.get('steam directory', None)
+        self._steamdir = Path(steamdir) if steamdir else None
+
         self._input = self.args.input
 
         if self.args.output:
@@ -256,6 +260,8 @@ class ConfigUtil:
     @property
     def game_config(self) -> str: return self._game_config
     @property
+    def steamdir(self) -> Optional[Path]: return self._steamdir
+    @property
     def studiomdl(self) -> Optional[Path]: return self._studiomdl
     @property
     def wad_list(self) -> List[Path]: return self._wad_list
@@ -285,12 +291,11 @@ class ConfigUtil:
     @property
     def mod_path(self) -> Optional[Path]:
         game = self.game_config
-        steamdir = self.configini[game].get('steam directory', None)
 
-        if not game or not steamdir:
+        if not game or not self.steamdir:
             return None
 
-        return (Path(steamdir) / r'steamapps/common'
+        return (self.steamdir / r'steamapps/common'
                 / self.configini[game].get('game', '')
                 / self.configini[game].get('mod', ''))
 
