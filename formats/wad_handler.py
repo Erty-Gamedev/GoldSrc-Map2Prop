@@ -129,9 +129,37 @@ class WadHandler:
     def get_texture(self, texture: str) -> Image:
         return self.textures[texture]
 
-    def set_wadlist(self, wads: list) -> None:
-        if wads and isinstance(wads, (list, tuple)):
-            self.wad_list = [Path(w) for w in wads]
+    def check_wad_path(self, wad: Path, map_filepath: Path) -> Union[Path, Literal[False]]:
+        """MAP files don't include the drive letter in the WAD list key, so let's try to handle that."""
+
+        # File exists, no need to do anything
+        if wad.exists(): return wad
+
+        # If we're missing drive letter (anchor),
+        # check if the steamdir or map file has a drive letter in the path
+        # and check if the wad file exists in either of these
+        if not wad.anchor or wad.anchor == '\\':
+            if (config.steamdir is not None
+                and config.steamdir.anchor
+                and config.steamdir.anchor != '\\'
+                and (config.steamdir.anchor / wad).exists()):
+                return config.steamdir.anchor / wad
+            
+            if (map_filepath.anchor
+                and map_filepath.anchor != '\\'
+                and (map_filepath.anchor / wad).exists()):
+                return map_filepath.anchor / wad
+        
+        return False
+
+    def set_wadlist(self, wads: List[str], map_filepath: Path) -> None:
+        if not wads: return
+        wadlist = []
+        for wad in wads:
+            checked = self.check_wad_path(Path(wad), map_filepath)
+            if checked:
+                wadlist.append(checked)
+        self.wad_list = wadlist
 
     @classmethod
     def skip_face(cls, texture_name: str) -> bool:
