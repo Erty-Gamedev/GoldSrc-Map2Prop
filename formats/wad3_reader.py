@@ -80,10 +80,11 @@ class Wad3Reader:
                 filepos = entry.filepos
                 disksize = entry.disksize
 
-                texture = TextureEntry(
-                    data[filepos:filepos+disksize]
-                )
-                self.textures[texture.name.lower()] = texture
+                if entry.type == 0x43:
+                    texture = TextureEntry(
+                        data[filepos:filepos+disksize]
+                    )
+                    self.textures[texture.name.lower()] = texture
 
     def __contains__(self, texture: str) -> bool:
         return texture.lower() in self.textures
