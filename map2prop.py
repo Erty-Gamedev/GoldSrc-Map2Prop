@@ -1,5 +1,5 @@
 """
-GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files,
+GoldSrc Map2Prop is a tool for converting .map, .rmf, .jmf, and .ol files,
 as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that
 can then be compiled into a GoldSrc format studio model
 without the hassle of using an 3D editor.
@@ -49,7 +49,7 @@ def main() -> None:
         filepath = Path(f"{filename}.map")
         extension = '.map'
 
-    if config.mapcompile and extension == '.obj':
+    if config.mapcompile and (extension in ('.obj', '.ol')):
         raise InvalidFileException('Invalid file type. '\
             '--mapcompile can only be used with map formats, '\
             f"but file was {extension}")
@@ -86,11 +86,24 @@ def main() -> None:
     elif extension == '.map':
         from formats.map_reader import MapReader
         filereader = MapReader(filepath, outputdir)
+    elif extension == '.ol':
+        from formats.ol_reader import OLReader
+        libary_reader = OLReader(filepath, outputdir)
+
+        logger.info(f"Processing prefab library with {libary_reader.dir_num_entries} prefabs")
+
+        for prefabname, filereader in libary_reader.rmf_files.items():
+            returncode = process_models(prefabname, outputdir, filereader)
+            if returncode > 0:
+                logger.warning(
+                    f"Something went wrong with compiling prefab \"{prefabname}\" "\
+                    f"in {filepath}")
+        return
     else:
-        logger.info('Invalid file type. Must be .map, .obj, .rmf, or .jmf, '\
+        logger.info('Invalid file type. Must be .map, .obj, .rmf, .jmf, or .ol '\
                 f"but was {extension}")
         raise InvalidFileException(
-            'File type must be .map, .obj, .rmf, or .jmf!')
+            'File type must be .map, .obj, .rmf, .jmf or .ol!')
 
     returncode = process_models(filename, outputdir, filereader)
 

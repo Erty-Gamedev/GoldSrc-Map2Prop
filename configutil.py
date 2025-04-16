@@ -77,7 +77,7 @@ class ConfigUtil:
         self.load_configini()
         self.argparser = argparse.ArgumentParser(
             prog='Map2Prop',
-            description='Converts a .map/.rmf/.jmf or J.A.C.K .obj into '\
+            description='Converts a .map/.rmf/.jmf/.ol or J.A.C.K .obj into '\
                 'goldsrc .smd files for model creation.',
             exit_on_error=False
         )
@@ -98,7 +98,7 @@ class ConfigUtil:
 
     def load_args(self) -> None:
         self.argparser.add_argument('input', nargs='?', type=str,
-                                 help='.map/.rmf/.jmf/.obj file to convert')
+                                 help='.map/.rmf/.jmf/.obj/.ol file to convert')
         self.argparser.add_argument(
             '-v', '--version', action='version', version=f"%(prog)s {VERSION}",
             help='display current version')
