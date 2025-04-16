@@ -18,6 +18,10 @@ class DirEntry:
     type: int
 
 
+def slugify(text: str) -> str:
+    return text.casefold().replace(' ', '_')
+
+
 class OLReader:
     def __init__(self, filepath: Path, outputdir: Path):
         self.filepath = filepath
@@ -42,7 +46,7 @@ class OLReader:
             for entry in self.entries:
                 file.seek(entry.offset, 0)
                 reader = RmfReader(self.filepath, self.outputdir, file)
-                self.rmf_files[entry.name] = reader
+                self.rmf_files[slugify(entry.name)] = reader
     
     def read_dir_entry(self, file: BufferedReader):
         offset = read_int(file)
