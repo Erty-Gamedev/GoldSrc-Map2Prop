@@ -100,8 +100,8 @@ class TestGeoutil(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_sort_vertices(self):
-        expected = [box['C'], box['D'], box['B'], box['A']]
         vertices = [box['A'], box['B'], box['C'], box['D']]
+        expected = [box['A'], box['C'], box['D'], box['B']]
 
         result = geoutil.sort_vertices(vertices, geoutil.Vector3D(1, 0, 0))
         self.assertEqual(expected, result)

@@ -68,7 +68,7 @@ class HessianPlane:
         d = self.distance_to_point(point)
         if abs(d) < EPSILON:
             return 0
-        return 1 if d > 0 else 0
+        return 1 if d > 0 else -1
 
     def __str__(self):
         return f"{self.normal} + {self.d}"
