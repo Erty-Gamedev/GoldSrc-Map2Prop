@@ -4,13 +4,36 @@ from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
 from triangulate.triangulate import triangulate
-from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
+from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal, points_to_plane
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException)
 from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
+
+
+BASE_AXIS: list[Vector3D] = [
+    Vector3D(0, 0, 1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),   # Floor
+    Vector3D(0, 0, -1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),  # Ceiling
+    Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),   # West wall
+    Vector3D(-1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),  # East wall
+    Vector3D(0, 1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),   # South wall
+    Vector3D(0, -1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),  # North wall
+]
+
+def textureaxisfromplane(plane_normal: Vector3D) -> tuple[Vector3D, Vector3D]:
+    bestaxis = 0
+    dot = 0.0
+    best = 0.0
+
+    for i in range(6):
+        dot = plane_normal.dot(BASE_AXIS[i*3])
+        if dot > best:
+            best = dot
+            bestaxis = i
+    
+    return BASE_AXIS[bestaxis*3+1], BASE_AXIS[bestaxis*3+2]
 
 
 class Face(BaseFace):
@@ -85,7 +108,7 @@ class Group:
 class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path, outputdir: Path):
+    def __init__(self, filepath: Path, outputdir: Path, fileBuffer: BufferedReader|None = None):
         self.filepath = filepath
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
@@ -95,11 +118,14 @@ class RmfReader(BaseReader):
         self.missing_textures: bool = False
         self.entities: List[Entity] = []
 
-        self.parse()
+        if fileBuffer is None:
+            with self.filepath.open('rb') as file:
+                self.parse(file)
+        else:
+            self.parse(fileBuffer)
 
-    def parse(self) -> None:
-        with self.filepath.open('rb') as file:
-            self.version = read_float(file)
+    def parse(self, file: BufferedReader) -> None:
+            self.version = round(read_float(file), 1)
 
             magic = file.read(3)
             if magic != bytes('RMF', 'ascii'):
@@ -192,7 +218,10 @@ class RmfReader(BaseReader):
         return self.textures[texture]
 
     def readface(self, file: BufferedReader) -> Face:
-        name = read_ntstring(file, 260)
+        if self.version < 1.8:
+            name = read_ntstring(file, 40)
+        else:
+            name = read_ntstring(file, 260)
 
         # Check if texture exists, or try to extract it if not
         if name not in self.checked:
@@ -200,13 +229,20 @@ class RmfReader(BaseReader):
                 self.missing_textures = True
             self.checked.append(name)
 
-        rightaxis = read_vector3D(file)
-        shiftx = read_float(file)
-        downaxis = read_vector3D(file)
-        shifty = read_float(file)
-        angle = read_float(file)
-        scalex = read_float(file)
-        scaley = read_float(file)
+        if self.version < 2.2:
+            shiftx = read_float(file)
+            shifty = read_float(file)
+            angle = read_float(file)
+            scalex = read_float(file)
+            scaley = read_float(file)
+        else:
+            rightaxis = read_vector3D(file)
+            shiftx = read_float(file)
+            downaxis = read_vector3D(file)
+            shifty = read_float(file)
+            angle = read_float(file)
+            scalex = read_float(file)
+            scaley = read_float(file)
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES\
             and name.lower() not in self.wadhandler.TOOL_TEXTURES:
@@ -217,16 +253,10 @@ class RmfReader(BaseReader):
             width = 16
             height = 16
 
-        texture = Texture(
-            name,
-            rightaxis, shiftx,
-            downaxis, shifty,
-            angle,
-            scalex, scaley,
-            width, height
-        )
-
-        file.read(16)  # Padding
+        if self.version < 1.8:
+            file.read(4)  # Padding
+        else:
+            file.read(16)  # Padding
 
         points: List[Tuple[float, float, float]] = []
         vertex_count = read_int(file)
@@ -240,6 +270,21 @@ class RmfReader(BaseReader):
             read_vector3D(file),
         ]
         plane_points.reverse()
+
+        if self.version < 2.2:
+            plane_normal, _ = points_to_plane(*plane_points)
+            xv, yv = textureaxisfromplane(plane_normal)
+            rightaxis = (xv.x, xv.y, xv.z)
+            downaxis = (yv.x, yv.y, yv.z)
+
+        texture = Texture(
+            name,
+            rightaxis, shiftx,
+            downaxis, shifty,
+            angle,
+            scalex, scaley,
+            width, height
+        )
 
         return Face(points, plane_points, texture)
 
