@@ -92,6 +92,7 @@ Please see [CONTRIBUTING.md](./.github/CONTRIBUTING.md).
 Thanks to Captain P for all the help and advice, as well as showing me the .rmf/.jmf parsing code from MESS (and of course many thanks to MESS for being an excellent resource).
 Thanks to Penguinboy for the tips and being very helpful with any questions I've had.
 Thanks to Kimilil for help with testing the release candidate and providing excellent feedback and ideas.
+Thanks to AdamBean for all the great help and helpful advice.
 
 ### Alpha Testers
 Many thanks goes out to the kind people who helped me test this program and provide useful feedback and suggestions during its alpha stage:
