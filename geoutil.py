@@ -202,8 +202,15 @@ def plane_normal(plane_points: Union[tuple, list]) -> Vector3D:
     return segments_cross(*plane_points).normalized
 
 
-def points_to_plane(a, b, c) -> tuple:
+def points_to_plane(a, b, c) -> tuple[Vector3D, float]:
     """Return the plane's normal vector and distance by three points"""
+    if not isinstance(a, Vector3D):
+        a = Vector3D(*a)
+    if not isinstance(b, Vector3D):
+        b = Vector3D(*b)
+    if not isinstance(c, Vector3D):
+        c = Vector3D(*c)
+
     normal = segments_cross(a, b, c).normalized
     return normal, normal.dot(a)
 
