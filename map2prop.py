@@ -40,21 +40,21 @@ def main() -> None:
         elif config.force_jmf:
             filepath = filepath.parent / f"{filepath.stem}.jmf"
 
-    if not filepath.exists():
-        logger.warning(f"Input file {filename} does not found")
-
     extension = filepath.suffix.lower()
 
-    if extension.strip() == '' and Path(f"{filename}.map").exists():
-        filepath = Path(f"{filename}.map")
-        extension = '.map'
+    if not filepath.exists():
+        if extension.strip() == '' and Path(f"{filename}.map").exists():
+            filepath = Path(f"{filename}.map")
+            extension = '.map'
+        else:
+            raise FileNotFoundError(f"Input file {filename} was not found")
 
     if config.mapcompile and (extension in ('.obj', '.ol')):
         raise InvalidFileException('Invalid file type. '\
             '--mapcompile can only be used with map formats, '\
             f"but file was {extension}")
 
-    logger.info(filename)
+    logger.info(filepath)
     if config.mapcompile:
         logger.info('Using --mapcompile')
 
