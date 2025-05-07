@@ -300,7 +300,7 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> in
     rename_chrome(models, outputdir)
 
     processed = [m for m in models.values() if m.polygons]
-    num_models = len(models)
+    num_models = len(processed)
 
     if not num_models:
         logger.info(f"No props found in {filename}")
@@ -308,14 +308,11 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> in
     if num_models == 1:
         logger.info(f"{filename} prepared.")
     else:
-        logger.info(f"{len(processed)} models from {filename} prepared.")
+        logger.info(f"{num_models} models from {filename} prepared.")
 
     returncodes = 0
     failed: List[str] = []
     for model in processed:
-        if not model.polygons:  # Skip empty models, such as empty worldspawns
-            continue
-    
         write_smd(model, outputdir, filereader)
         write_qc(model, outputdir)
 
