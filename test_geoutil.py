@@ -4,18 +4,19 @@ Tests for geometric functions
 
 import unittest
 import geoutil
+from geoutil import Vector3D
 from triangulate.triangulate import triangulate
 
 # Simple test box of size 2x2x2
 box = {
-    'A': geoutil.Vector3D(1, -1, 0),
-    'B': geoutil.Vector3D(1, -1, 2),
-    'C': geoutil.Vector3D(1, 1, 0),
-    'D': geoutil.Vector3D(1, 1, 2),
-    'E': geoutil.Vector3D(-1, -1, 0),
-    'F': geoutil.Vector3D(-1, -1, 2),
-    'G': geoutil.Vector3D(-1, 1, 0),
-    'H': geoutil.Vector3D(-1, 1, 2),
+    'A': Vector3D(1, -1, 0),
+    'B': Vector3D(1, -1, 2),
+    'C': Vector3D(1, 1, 0),
+    'D': Vector3D(1, 1, 2),
+    'E': Vector3D(-1, -1, 0),
+    'F': Vector3D(-1, -1, 2),
+    'G': Vector3D(-1, 1, 0),
+    'H': Vector3D(-1, 1, 2),
 }
 boxfaces = {
     'x': [box['A'], box['C'], box['D'], box['B']],
@@ -35,18 +36,18 @@ class TestGeoutil(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_vectors_angle(self):
-        a = geoutil.Vector3D(0.8, 0.9, 1.0)
-        b = geoutil.Vector3D(1.0, 0.0, 0.0)
+        a = Vector3D(0.8, 0.9, 1.0)
+        b = Vector3D(1.0, 0.0, 0.0)
         result = geoutil.vectors_angle(b, a)
         self.assertAlmostEqual(1.0343, result, 4)
 
     def test_segment_cross(self):
-        expected = geoutil.Vector3D(12, 12, 12)
+        expected = Vector3D(12, 12, 12)
 
         result = geoutil.segments_cross(
-            geoutil.Vector3D(0, 3, 0),
-            geoutil.Vector3D(-.5, -.5, 4),
-            geoutil.Vector3D(3, 0, 0)
+            Vector3D(0, 3, 0),
+            Vector3D(-.5, -.5, 4),
+            Vector3D(3, 0, 0)
         )
         self.assertEqual(expected, result)
 
@@ -54,9 +55,9 @@ class TestGeoutil(unittest.TestCase):
         expected = -19.5
 
         result = geoutil.segments_dot(
-            geoutil.Vector3D(0, 3, 0),
-            geoutil.Vector3D(-.5, -.5, 4),
-            geoutil.Vector3D(3, 0, 0)
+            Vector3D(0, 3, 0),
+            Vector3D(-.5, -.5, 4),
+            Vector3D(3, 0, 0)
         )
         self.assertEqual(expected, result)
 
@@ -67,12 +68,12 @@ class TestGeoutil(unittest.TestCase):
 
     def test_points_to_plane(self):
         expected = {
-            'x': (geoutil.Vector3D(1, 0, 0), 1),
-            'y': (geoutil.Vector3D(0, 1, 0), 1),
-            'z': (geoutil.Vector3D(0, 0, 1), 2),
-            '-x': (geoutil.Vector3D(-1, 0, 0), 1),
-            '-y': (geoutil.Vector3D(0, -1, 0), 1),
-            '-z': (geoutil.Vector3D(0, 0, -1), 0),
+            'x': (Vector3D(1, 0, 0), 1),
+            'y': (Vector3D(0, 1, 0), 1),
+            'z': (Vector3D(0, 0, 1), 2),
+            '-x': (Vector3D(-1, 0, 0), 1),
+            '-y': (Vector3D(0, -1, 0), 1),
+            '-z': (Vector3D(0, 0, -1), 0),
         }
 
         for side, face in boxfaces.items():
@@ -83,27 +84,55 @@ class TestGeoutil(unittest.TestCase):
         expected = [
             (box['A'], box['C'], box['D']), (box['A'], box['D'], box['B'])
         ]
-        result = list(triangulate(boxfaces['x'], geoutil.Vector3D(1, 0, 0)))
+        result = list(triangulate(boxfaces['x'], Vector3D(1, 0, 0)))
 
         self.assertEqual(expected, result)
 
     def test_geometric_center(self):
-        expected = geoutil.Vector3D(0, 0, 1)
+        expected = Vector3D(0, 0, 1)
         result = geoutil.geometric_center(list(box.values()))
 
         self.assertEqual(expected, result)
 
     def test_bounds_from_points(self):
-        expected = (geoutil.Vector3D(-1, -1, 0), geoutil.Vector3D(1, 1, 2))
+        expected = (Vector3D(-1, -1, 0), Vector3D(1, 1, 2))
         result = geoutil.bounds_from_points(list(box.values()))
 
         self.assertEqual(expected, result)
+
+    def test_plane_normal(self):
+        result = geoutil.plane_normal(boxfaces['x'][:3])
+        self.assertEqual(Vector3D(1, 0, 0), result)
+
+    def test_plane_normal2(self):
+        A = Vector3D(0, -.25, 1)
+        B = Vector3D(-.66172, .60355, .50136)
+        C = Vector3D(-.94679, -.27159, .28654)
+
+        result = geoutil.plane_normal((A, B, C))
+        self.assertEqual(Vector3D(-.6018, 0, .7986), result)
 
     def test_sort_vertices(self):
         vertices = [box['A'], box['B'], box['C'], box['D']]
         expected = [box['A'], box['C'], box['D'], box['B']]
 
-        result = geoutil.sort_vertices(vertices, geoutil.Vector3D(1, 0, 0))
+        result = geoutil.sort_vertices(vertices, Vector3D(1, 0, 0))
+        self.assertEqual(expected, result)
+
+    def test_sort_vertices2(self):
+        A = Vector3D(0, -.25, 1)
+        B = Vector3D(0, .25, 1)
+        C = Vector3D(-.28236, -.60355, .78723)
+        D = Vector3D(-.65862, -.60355, .50369)
+        E = Vector3D(-.94679, -.27159, .28654)
+        F = Vector3D(-.94725, .24074, .2862)
+        G = Vector3D(-.66172, .60355, .50136)
+        H = Vector3D(-.27808, .59819, .79045)
+
+        vertices = [A, D, C, G, F, H, E, B]
+        expected = [A, B, H, G, F, E, D, C]
+
+        result = geoutil.sort_vertices(vertices, geoutil.plane_normal((A, G, E)))
         self.assertEqual(expected, result)
 
 
