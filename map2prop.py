@@ -73,6 +73,10 @@ def main() -> None:
     if not outputdir.is_dir():
         outputdir.mkdir()
 
+    if config.eager:
+        import ear_clip
+        ear_clip.IS_EAGER = True
+
     filereader: BaseReader
     if extension == '.obj':
         from formats.obj_reader import ObjReader
