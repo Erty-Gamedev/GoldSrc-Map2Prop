@@ -126,10 +126,8 @@ def vectors_angle(a: Vector3D, b: Vector3D) -> float:
 
 
 def segments_angle(a: Vector3D, b: Vector3D, c: Vector3D) -> float:
-    """Returns the angle between the segments ab and bc in radians"""
-    vector_ab = Vector3D(b.x - a.x, b.y - a.y, b.z - a.z)
-    vector_bc = Vector3D(c.x - b.x, c.y - b.y, c.z - b.z)
-    return vectors_angle(vector_ab, vector_bc)
+    """Returns the angle between the segments ba and bc in radians"""
+    return vectors_angle(a - b, c - b)
 
 
 def plane_rotation(normal, d):

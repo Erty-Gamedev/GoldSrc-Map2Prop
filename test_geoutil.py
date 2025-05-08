@@ -4,7 +4,7 @@ Tests for geometric functions
 
 import unittest
 import geoutil
-from geoutil import Vector3D
+from vector3d import Vector3D
 from triangulate.triangulate import triangulate
 
 # Simple test box of size 2x2x2
@@ -38,8 +38,15 @@ class TestGeoutil(unittest.TestCase):
     def test_vectors_angle(self):
         a = Vector3D(0.8, 0.9, 1.0)
         b = Vector3D(1.0, 0.0, 0.0)
-        result = geoutil.vectors_angle(b, a)
+        result = geoutil.vectors_angle(a, b)
         self.assertAlmostEqual(1.0343, result, 4)
+
+    def test_segments_angle(self):
+        a = Vector3D(1.0483718182005188, 0.03884376154959568, 0.31663345635354817)
+        b = Vector3D(1.6243808521814356, 0.7427492126576541, 0.4847987784743218)
+        c = Vector3D(1.0639173529825854, 2.0197854083931044, 1.2592803409293363)
+        result = geoutil.segments_angle(a, b, c)
+        self.assertAlmostEqual(2.06996, result, 4)
 
     def test_segment_cross(self):
         expected = Vector3D(12, 12, 12)
