@@ -3,7 +3,7 @@ from PIL import Image
 from pathlib import Path
 from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
-from triangulate.triangulate import triangulate
+from ear_clip import ear_clip
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
                      unique_vectors, sort_vertices, faces_from_planes)
 from formats import MissingTextureException
@@ -33,7 +33,7 @@ class Face(BaseFace):
                 normal
             ))
         
-        for triangle in triangulate(self._points, self._normal):
+        for triangle in ear_clip(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:

@@ -3,7 +3,6 @@ Tests for geometric functions
 """
 
 import unittest
-import geoutil
 from vector3d import Vector3D
 from triangulate.triangulate import triangulate
 
@@ -87,13 +86,15 @@ class TestGeoutil(unittest.TestCase):
             result = geoutil.points_to_plane(*face[:3])
             self.assertEqual(expected[side], result)
 
-    def test_triangulate(self):
+    def test_ear_clip(self):
         expected = [
-            (box['A'], box['C'], box['D']), (box['A'], box['D'], box['B'])
+            (box['B'], box['A'], box['C']), (box['C'], box['D'], box['B'])
         ]
-        result = list(triangulate(boxfaces['x'], Vector3D(1, 0, 0)))
+        result = ear_clip.ear_clip(boxfaces['x'], Vector3D(1, 0, 0))
 
         self.assertEqual(expected, result)
+        # We expect n - 2 triangles for n vertices
+        self.assertEqual(len(boxfaces['x']) - 2, len(result))
 
     def test_geometric_center(self):
         expected = Vector3D(0, 0, 1)

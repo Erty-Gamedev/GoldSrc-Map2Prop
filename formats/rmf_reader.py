@@ -3,7 +3,7 @@ from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
-from triangulate.triangulate import triangulate
+from ear_clip import ear_clip
 from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal, points_to_plane
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
@@ -59,7 +59,7 @@ class Face(BaseFace):
                 self._normal
             ))
 
-        for triangle in triangulate(self._points, self._normal):
+        for triangle in ear_clip(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:
