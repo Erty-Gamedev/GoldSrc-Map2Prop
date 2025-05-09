@@ -310,19 +310,31 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> in
     else:
         logger.info(f"{num_models} models from {filename} prepared.")
 
+    can_compile = True
+    if config.autocompile and (config.studiomdl is None or not config.studiomdl.is_file()):
+        logger.info(
+            'Autocompile is enabled, but could not proceed. '\
+            f"{config.studiomdl} was not found or is not a file.")
+        can_compile = False
+    if config.autocompile and filereader.missing_textures:
+        logger.info(
+            'Autocompile enabled, but could not proceed. '\
+            'Model has missing textures. Check logs for more info.')
+        can_compile = False
+
     returncodes = 0
     failed: List[str] = []
     for model in processed:
         write_smd(model, outputdir, filereader)
         write_qc(model, outputdir)
 
-        if config.autocompile:
-            if (returncode := compile(model, outputdir, filereader)):
+        if config.autocompile and can_compile:
+            if (returncode := compile(model, outputdir)):
                 failed.append(model.outname)
             returncodes += returncode
 
     
-    if config.autocompile:
+    if config.autocompile and can_compile:
         if returncodes == 0:
             logger.info(f"Successfully compiled {num_models} models!")
         else:
@@ -415,45 +427,37 @@ $sequence "Generated_with_Erty's_Map2Prop" "{model.outname}"
     return
 
 
-def compile(model: RawModel, outputdir: Path, filereader: BaseReader) -> int:
-    if not config.studiomdl or not config.studiomdl.is_file():
-        logger.info(
-            'Autocompile enabled, but could not proceed. '\
-            f"{config.studiomdl} was not found or is not a file.")
-    elif filereader.missing_textures:
-        logger.info(
-            'Autocompile enabled, but could not proceed. '\
-            'Model has missing textures. Check logs for more info.')
-    else:
-        logger.info('Autocompile enabled, compiling model...')
+def compile(model: RawModel, outputdir: Path) -> int:
+    assert(config.studiomdl is not None)  # Already checked for none
+    logger.info('Autocompile enabled, compiling model...')
 
-        current_dir = os.path.abspath(os.curdir)
-        os.chdir((Path(current_dir) / outputdir).absolute())
+    current_dir = os.path.abspath(os.curdir)
+    os.chdir((Path(current_dir) / outputdir).absolute())
 
-        returncode = 0
-        try:
-            completed_process = subprocess.run([
-                config.studiomdl,
-                Path(f"{model.outname}.qc"),
-            ], check=False, timeout=config.timeout, capture_output=True, encoding='charmap')
+    returncode = 0
+    try:
+        completed_process = subprocess.run([
+            config.studiomdl,
+            Path(f"{model.outname}.qc"),
+        ], check=False, timeout=config.timeout, capture_output=True, encoding='charmap')
 
-            compile_output = completed_process.stdout
+        compile_output = completed_process.stdout
 
-            returncode = completed_process.returncode
-            if returncode == 0:
-                logger.info(compile_output)
-                logger.info(
-                    f"{outputdir / model.outname}.mdl compiled successfully!")
-            else:
-                logger.warning(compile_output)
-                logger.info(
-                    'Something went wrong. Check the compiler output '\
-                    'above for errors.')
-        except Exception:
-            returncode = 1
-            logger.exception('Model compilation failed with exception')
-            
-        os.chdir(current_dir)
+        returncode = completed_process.returncode
+        if returncode == 0:
+            logger.info(compile_output)
+            logger.info(
+                f"{outputdir / model.outname}.mdl compiled successfully!")
+        else:
+            logger.warning(compile_output)
+            logger.info(
+                'Something went wrong. Check the compiler output '\
+                'above for errors.')
+    except Exception:
+        returncode = 1
+        logger.exception('Model compilation failed with exception')
+        
+    os.chdir(current_dir)
     return returncode
 
     
