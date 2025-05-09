@@ -68,18 +68,14 @@ def find_optimal_ear(polygon: list[Vector3D], full_polygon: list[Vector3D], norm
         cross = (p_prev - point).normalized.cross((p_next - point).normalized)
         normal_dot = -normal.dot(cross)
 
-        if (normal_dot > 0):
+        if normal_dot > 0:
             if any_point_inside_triangle(full_polygon, (p_prev, point, p_next)):
                 continue
 
             if IS_EAGER: return i  # If eager, just return first found ear index
 
             delta = abs(optimal_dot - normal_dot)
-            if optimal_index == -1:
-                optimal_index = i
-                current_optimal = delta
-                continue
-            if delta < current_optimal:
+            if optimal_index == -1 or delta < current_optimal:
                 optimal_index = i
                 current_optimal = delta
                 continue
