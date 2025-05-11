@@ -17,7 +17,6 @@ from formats.export import process_models, rewrite_map
 
 setup_logger()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 RUNNING_AS_EXE: Final[bool] = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
@@ -123,6 +122,8 @@ if __name__ == '__main__':
     if not config:
         logger.error('Could not parse config file, exiting...')
         exit(2)
+    
+    logger.setLevel(logging.DEBUG if config.debug else logging.INFO)
 
     try:
         main()

@@ -55,6 +55,7 @@ class ConfigUtil:
 
         self._input:         Optional[str] = None
         self._output:        Path = Path('.')
+        self._debug:         bool = False
         self._mapcompile:    bool = False
         self._force_rmf:     bool = False
         self._force_jmf:     bool = False
@@ -199,6 +200,8 @@ class ConfigUtil:
         else:
             self._output = Path(configini.get('output directory', '.'))
 
+        self._debug = configini.getboolean('debug', False)
+
         self._mapcompile = self.args.mapcompile
         self._force_rmf = self.args.force_rmf
         self._force_jmf = self.args.force_jmf
@@ -256,6 +259,8 @@ class ConfigUtil:
     def input(self) -> Optional[str]: return self._input
     @property
     def output_dir(self) -> Path: return self._output
+    @property
+    def debug(self) -> bool: return self._debug
     @property
     def mapcompile(self) -> bool: return self._mapcompile
     @property
