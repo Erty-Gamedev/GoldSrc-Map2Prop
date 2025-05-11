@@ -111,7 +111,7 @@ class MapReader(BaseReader):
 
                 if key == 'classname':
                     classname = value.lower()
-                elif key == 'wad' and classname == 'worldspawn':
+                elif key == 'wad' and classname == 'worldspawn' and value:
                     self.wadhandler.set_wadlist(value.split(';'), self.filepath)
 
                 properties[key] = value
