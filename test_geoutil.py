@@ -4,7 +4,8 @@ Tests for geometric functions
 
 import unittest
 from vector3d import Vector3D
-from triangulate.triangulate import triangulate
+import geoutil
+import ear_clip
 
 # Simple test box of size 2x2x2
 box = {
@@ -142,7 +143,6 @@ class TestGeoutil(unittest.TestCase):
 
         result = geoutil.sort_vertices(vertices, geoutil.plane_normal((A, G, E)))
         self.assertEqual(expected, result)
-
 
 if __name__ == '__main__':
     unittest.main()
