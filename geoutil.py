@@ -273,7 +273,7 @@ def intersection_3planes(p1: HessianPlane,
     n3, d3 = p3.nd
 
     denominator = n1.dot(n2.cross(n3))
-    if abs(denominator) < EPSILON:
+    if abs(denominator) < EPSILON/100:
         return False
 
     return -(
@@ -353,9 +353,9 @@ def faces_from_planes(planes: List[Plane]) -> List[Dict[str, Any]]:
     num_planes = len(planes)
     faces: List[Dict[str, Any]] = [{'vertices': []} for _ in range(num_planes)]
 
-    for i in range(num_planes):
-        for j in range(i + 1, num_planes):
-            for k in range(j + 1, num_planes):
+    for i in range(num_planes - 2):
+        for j in range(i, num_planes - 1):
+            for k in range(j, num_planes):
                 if i == j == k:
                     continue
 
