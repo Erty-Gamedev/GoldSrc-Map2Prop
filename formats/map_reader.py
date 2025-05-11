@@ -1,17 +1,18 @@
-from typing import List, Dict, Tuple, Any
+import logging
 from PIL import Image
 from pathlib import Path
 from io import TextIOWrapper
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
-from triangulate.triangulate import triangulate
+from ear_clip import ear_clip
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
                      unique_vectors, sort_vertices, faces_from_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
+logger = logging.getLogger(__name__)
 
 class Face(BaseFace):
-    def __init__(self, points: List[Vector3D], texture: Texture, normal: Vector3D):
+    def __init__(self, points: list[Vector3D], texture: Texture, normal: Vector3D):
         self._points = sort_vertices(unique_vectors(points), normal)
         self._vertices = []
         self._polygons = []
@@ -33,7 +34,7 @@ class Face(BaseFace):
                 normal
             ))
         
-        for triangle in triangulate(self._points, self._normal):
+        for triangle in ear_clip(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:
@@ -55,14 +56,14 @@ class Face(BaseFace):
     def normal(self): return self._normal
 
 class Brush(BaseBrush):
-    def __init__(self, faces: List[Face], raw: str):
+    def __init__(self, faces: list[Face], raw: str):
         super().__init__(faces)
         self._raw = raw
     @property
     def raw(self) -> str: return self._raw
 
 class Entity(BaseEntity):
-    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush], raw: str):
+    def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush], raw: str):
         super().__init__(classname, properties, brushes)
         self._raw = raw
     @property
@@ -77,10 +78,10 @@ class MapReader(BaseReader):
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
-        self.checked: List[str] = []
-        self.textures: Dict[str, ImageInfo] = {}
+        self.checked: list[str] = []
+        self.textures: dict[str, ImageInfo] = {}
         self.missing_textures = False
-        self.entities: List[Entity] = []
+        self.entities: list[Entity] = []
 
         self.parse()
 
@@ -93,8 +94,8 @@ class MapReader(BaseReader):
 
     def readentity(self, file: TextIOWrapper) -> Entity:
         classname = ''
-        properties: Dict[str, str] = {}
-        brushes: List[Brush] = []
+        properties: dict[str, str] = {}
+        brushes: list[Brush] = []
         raw = "{\n"
 
         while line := file.readline():
@@ -111,7 +112,7 @@ class MapReader(BaseReader):
 
                 if key == 'classname':
                     classname = value.lower()
-                elif key == 'wad' and classname == 'worldspawn':
+                elif key == 'wad' and classname == 'worldspawn' and value:
                     self.wadhandler.set_wadlist(value.split(';'), self.filepath)
 
                 properties[key] = value
@@ -126,7 +127,7 @@ class MapReader(BaseReader):
         return Entity(classname, properties, brushes, raw)
 
     def readbrush(self, file: TextIOWrapper) -> Brush:
-        planes: List[Plane] = []
+        planes: list[Plane] = []
         raw = ''
 
         while line := file.readline():
@@ -142,9 +143,15 @@ class MapReader(BaseReader):
             else:
                 raise Exception(f"Unexpected face data: {line}")
 
-        faces = [Face(f['vertices'], f['texture'], f['normal'])
-                for f in faces_from_planes(planes) if not
-                self.wadhandler.skip_face(f['texture'].name)]
+        facedata = faces_from_planes(planes)
+        faces: list[Face] = []
+        for data in facedata:
+            if not data['vertices'] or 'texture' not in data:
+                logger.warning(f"Empty brush face skipped near {planes[0].plane_points[0]}")
+                continue
+            if self.wadhandler.skip_face(data['texture'].name):
+                continue
+            faces.append(Face(data['vertices'], data['texture'], data['normal']))
 
         return Brush(faces, raw)
     
@@ -153,7 +160,7 @@ class MapReader(BaseReader):
         if len(parts) != 31:
             raise Exception(f"Unexpected face data: {line}")
 
-        plane_points: List[Tuple[float, float, float]] = [
+        plane_points: list[tuple[float, float, float]] = [
             (float(parts[1]), float(parts[2]), float(parts[3])),
             (float(parts[6]), float(parts[7]), float(parts[8])),
             (float(parts[11]), float(parts[12]), float(parts[13]))

@@ -13,7 +13,7 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '1.1.0'
+VERSION = '1.2.1'
 
 
 @dataclasses.dataclass
@@ -55,6 +55,7 @@ class ConfigUtil:
 
         self._input:         Optional[str] = None
         self._output:        Path = Path('.')
+        self._debug:         bool = False
         self._mapcompile:    bool = False
         self._force_rmf:     bool = False
         self._force_jmf:     bool = False
@@ -73,6 +74,7 @@ class ConfigUtil:
         self._qc_offset:     str = '0 0 0'
         self._qc_rotate:     float = 270.0
         self._renamechrome:  bool = False
+        self._eager:         bool = False
 
         self.load_configini()
         self.argparser = argparse.ArgumentParser(
@@ -170,6 +172,10 @@ class ConfigUtil:
             '--renamechrome', action='store_true',
             help='rename chrome textures (disables chrome)'
         )
+        misc.add_argument(
+            '--eager', action='store_true',
+            help='use eager triangulation algorithm (faster)'
+        )
 
         self.args = Args.from_dict(vars(self.argparser.parse_args()))
 
@@ -193,6 +199,8 @@ class ConfigUtil:
             self._output = Path(self.args.output)
         else:
             self._output = Path(configini.get('output directory', '.'))
+
+        self._debug = configini.getboolean('debug', False)
 
         self._mapcompile = self.args.mapcompile
         self._force_rmf = self.args.force_rmf
@@ -252,6 +260,8 @@ class ConfigUtil:
     @property
     def output_dir(self) -> Path: return self._output
     @property
+    def debug(self) -> bool: return self._debug
+    @property
     def mapcompile(self) -> bool: return self._mapcompile
     @property
     def force_rmf(self) -> bool: return self._force_rmf
@@ -287,6 +297,8 @@ class ConfigUtil:
     def qc_rotate(self) -> float: return self._qc_rotate
     @property
     def renamechrome(self) -> bool: return self._renamechrome
+    @property
+    def eager(self) -> bool: return self._eager
 
     @property
     def mod_path(self) -> Optional[Path]:

@@ -1,7 +1,7 @@
 from typing import List, Dict, Final, Literal
 from pathlib import Path
 import logging
-from triangulate.triangulate import triangulate
+from ear_clip import ear_clip
 from geoutil import Vector3D, Vertex, Polygon, Texture, ImageInfo, plane_normal
 from formats.base_classes import BaseReader, BaseEntity, BaseFace, BaseBrush
 from formats.wad_handler import WadHandler
@@ -45,7 +45,7 @@ class Face(BaseFace):
         self._texture = Texture(texture)
         self._normal = plane_normal(points[:3])
 
-        for triangle in triangulate(self._points, self._normal):
+        for triangle in ear_clip(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self._vertices:

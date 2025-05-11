@@ -4,7 +4,7 @@ from pathlib import Path
 from io import BufferedReader
 from dataclasses import dataclass
 from vector3d import Vector3D
-from triangulate.triangulate import triangulate
+from ear_clip import ear_clip
 from geoutil import Polygon, Vertex, ImageInfo, Texture
 from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
@@ -41,7 +41,7 @@ class Face(BaseFace):
             ))
             self._points.append(Vector3D(*face_vertex.vertex))
         
-        for triangle in triangulate(self._points, self._normal):
+        for triangle in ear_clip(self._points, self._normal):
             polygon = []
             for point in triangle:
                 for vertex in self.vertices:

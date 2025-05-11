@@ -17,7 +17,6 @@ from formats.export import process_models, rewrite_map
 
 setup_logger()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 RUNNING_AS_EXE: Final[bool] = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
@@ -40,21 +39,21 @@ def main() -> None:
         elif config.force_jmf:
             filepath = filepath.parent / f"{filepath.stem}.jmf"
 
-    if not filepath.exists():
-        logger.warning(f"Input file {filename} does not found")
-
     extension = filepath.suffix.lower()
 
-    if extension.strip() == '' and Path(f"{filename}.map").exists():
-        filepath = Path(f"{filename}.map")
-        extension = '.map'
+    if not filepath.exists():
+        if extension.strip() == '' and Path(f"{filename}.map").exists():
+            filepath = Path(f"{filename}.map")
+            extension = '.map'
+        else:
+            raise FileNotFoundError(f"Input file {filename} was not found")
 
     if config.mapcompile and (extension in ('.obj', '.ol')):
         raise InvalidFileException('Invalid file type. '\
             '--mapcompile can only be used with map formats, '\
             f"but file was {extension}")
 
-    logger.info(filename)
+    logger.info(filepath)
     if config.mapcompile:
         logger.info('Using --mapcompile')
 
@@ -72,6 +71,10 @@ def main() -> None:
         outputdir = filedir / config.output_dir
     if not outputdir.is_dir():
         outputdir.mkdir()
+
+    if config.eager:
+        import ear_clip
+        ear_clip.IS_EAGER = True
 
     filereader: BaseReader
     if extension == '.obj':
@@ -119,6 +122,8 @@ if __name__ == '__main__':
     if not config:
         logger.error('Could not parse config file, exiting...')
         exit(2)
+    
+    logger.setLevel(logging.DEBUG if config.debug else logging.INFO)
 
     try:
         main()
