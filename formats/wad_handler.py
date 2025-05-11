@@ -106,14 +106,14 @@ class WadHandler:
         
         texfile = f"{texture}.bmp"
 
+        reader: Union[Wad3Reader, Literal[False]] = self.check_wads(texture)
+
         if (self.outputdir / texfile).exists():
             return True
 
         if (self.filedir / texfile).exists():
             copy2(self.filedir / texfile, self.outputdir / texfile)
             return True
-        
-        reader: Union[Wad3Reader, Literal[False]] = self.check_wads(texture)
 
         if isinstance(reader, Wad3Reader):
             logger.info(f"Extracting {texture} from {reader.file}.")
