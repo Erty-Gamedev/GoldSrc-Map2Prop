@@ -9,7 +9,7 @@ from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException)
-from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
+from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity, MAP_NDIGITS
 from formats.wad_handler import WadHandler
 
 
@@ -38,15 +38,15 @@ def textureaxisfromplane(plane_normal: Vector3D) -> tuple[Vector3D, Vector3D]:
 
 class Face(BaseFace):
     def __init__(self,
-                 points: List[Tuple[float, float, float]],
-                 plane_points: List[Tuple[float, float, float]],
+                 points: list[Vector3D],
+                 plane_points: tuple[Vector3D, Vector3D, Vector3D],
                  texture: Texture):
-        self._points = [Vector3D(*p) for p in points]
-        self._plane_points = [Vector3D(*p) for p in plane_points]
+        self._points = points
+        self._plane_points = plane_points
         self._polygons: List[Polygon] = []
         self._texture = texture
         self._vertices: List[Vertex] = []
-        self._normal: Vector3D = plane_normal(self._plane_points)
+        self._normal: Vector3D = plane_normal(self._plane_points[::-1])
 
         for point in self.points:
             u, v = self.project_uv(Vector3D(*point))
@@ -199,8 +199,6 @@ class RmfReader(BaseReader):
         faces_count = read_int(file)
         for _ in range(faces_count):
             face = self.readface(file)
-            if self.wadhandler.skip_face(face.texture.name):
-                continue
             faces.append(face)
         return Brush(faces)
 
@@ -258,21 +256,21 @@ class RmfReader(BaseReader):
         else:
             file.read(16)  # Padding
 
-        points: List[Tuple[float, float, float]] = []
+        points: list[Vector3D] = []
         vertex_count = read_int(file)
         for _ in range(vertex_count):
-            points.append(read_vector3D(file))
+            point = read_vector3D(file)
+            points.append(Vector3D(*point))
         points.reverse()
 
-        plane_points = [
-            read_vector3D(file),
-            read_vector3D(file),
-            read_vector3D(file),
-        ]
-        plane_points.reverse()
+        plane_points = (
+            Vector3D(*read_vector3D(file)),
+            Vector3D(*read_vector3D(file)),
+            Vector3D(*read_vector3D(file)),
+        )
 
         if self.version < 2.2:
-            plane_normal, _ = points_to_plane(*plane_points)
+            plane_normal = plane_normal(plane_points[::-1])
             xv, yv = textureaxisfromplane(plane_normal)
             rightaxis = (xv.x, xv.y, xv.z)
             downaxis = (yv.x, yv.y, yv.z)

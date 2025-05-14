@@ -6,7 +6,7 @@ from configutil import config
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from ear_clip import ear_clip
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
-                     unique_vectors, sort_vertices, faces_from_planes)
+                    unique_vectors, sort_vertices, faces_from_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
@@ -60,14 +60,14 @@ class Brush(BaseBrush):
     def __init__(self, faces: list[Face], raw: str):
         super().__init__(faces)
         self._raw = raw
-    @property
+    
     def raw(self) -> str: return self._raw
 
 class Entity(BaseEntity):
     def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush], raw: str):
         super().__init__(classname, properties, brushes)
         self._raw = raw
-    @property
+    
     def raw(self) -> str: return self._raw
 
 
@@ -122,7 +122,7 @@ class MapReader(BaseReader):
                     config.mapcompile and classname != 'func_map2prop'
                 )
                 brushes.append(brush)
-                raw += brush.raw
+                raw += brush.raw()
             elif line.startswith('}'):
                 break
             else:
