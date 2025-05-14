@@ -2,7 +2,7 @@
 Utility class for arguments and config file parsing.
 """
 
-from typing import Optional, List, Self
+from typing import Optional, Self, Final
 import os
 import sys
 import argparse
@@ -13,7 +13,7 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION = '1.2.2'
+VERSION: Final[str] = '1.2.5'
 
 
 @dataclasses.dataclass
@@ -35,13 +35,13 @@ class Args:
     outputname:   Optional[str] = None
     scale:        Optional[float] = None
     gamma:        Optional[float] = None
-    offset:       Optional[List[float]] = None
+    offset:       Optional[list[float]] = None
     rotate:       Optional[float] = None
     renamechrome: bool = False
 
     @classmethod
     def from_dict(cls, d: dict) -> Self:
-        fields: List[str] = [f.name for f in dataclasses.fields(cls)]
+        fields: list[str] = [f.name for f in dataclasses.fields(cls)]
         new_d = {}
         for key, value in d.items():
             if key in fields:
@@ -62,7 +62,7 @@ class ConfigUtil:
         self._game_config:   str = ''
         self._steamdir:      Optional[Path] = None
         self._studiomdl:     Optional[Path] = None
-        self._wad_list:      List[Path] = []
+        self._wad_list:      list[Path] = []
         self._wad_cache:     int = 10
         self._smoothing:     float = 60.0
         self._autocompile:   bool = True
@@ -274,7 +274,7 @@ class ConfigUtil:
     @property
     def studiomdl(self) -> Optional[Path]: return self._studiomdl
     @property
-    def wad_list(self) -> List[Path]: return self._wad_list
+    def wad_list(self) -> list[Path]: return self._wad_list
     @property
     def wad_cache(self) -> int: return self._wad_cache
     @property
