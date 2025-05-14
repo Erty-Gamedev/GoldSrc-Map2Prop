@@ -2,10 +2,11 @@ import logging
 from PIL import Image
 from pathlib import Path
 from io import TextIOWrapper
+from configutil import config
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from ear_clip import ear_clip
 from geoutil import (Polygon, Vertex, Plane, Vector3D, Texture, ImageInfo,
-                     unique_vectors, sort_vertices, faces_from_planes)
+                    unique_vectors, sort_vertices, faces_from_planes)
 from formats import MissingTextureException
 from formats.wad_handler import WadHandler
 
@@ -59,14 +60,14 @@ class Brush(BaseBrush):
     def __init__(self, faces: list[Face], raw: str):
         super().__init__(faces)
         self._raw = raw
-    @property
+    
     def raw(self) -> str: return self._raw
 
 class Entity(BaseEntity):
     def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush], raw: str):
         super().__init__(classname, properties, brushes)
         self._raw = raw
-    @property
+    
     def raw(self) -> str: return self._raw
 
 
@@ -117,16 +118,18 @@ class MapReader(BaseReader):
 
                 properties[key] = value
             elif line.startswith('{'):
-                brush = self.readbrush(file)
+                brush = self.readbrush(file,
+                    config.mapcompile and classname != 'func_map2prop'
+                )
                 brushes.append(brush)
-                raw += brush.raw
+                raw += brush.raw()
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected entity data: {line}")
         return Entity(classname, properties, brushes, raw)
 
-    def readbrush(self, file: TextIOWrapper) -> Brush:
+    def readbrush(self, file: TextIOWrapper, onlyraw: bool) -> Brush:
         planes: list[Plane] = []
         raw = ''
 
@@ -137,11 +140,15 @@ class MapReader(BaseReader):
             if line.startswith('//'):
                 continue
             elif line.startswith('('):
-                planes.append(self.readplane(line))
+                if not onlyraw:
+                    planes.append(self.readplane(line))
             elif line.startswith('}'):
                 break
             else:
                 raise Exception(f"Unexpected face data: {line}")
+
+        if onlyraw:
+            return Brush([], raw)
 
         facedata = faces_from_planes(planes)
         faces: list[Face] = []

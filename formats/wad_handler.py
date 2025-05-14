@@ -3,7 +3,6 @@ from pathlib import Path
 from collections import OrderedDict
 from PIL.Image import Image
 import logging
-from logutil import shutdown_logger
 from formats.wad3_reader import Wad3Reader
 from configutil import config
 from shutil import copy2
@@ -39,9 +38,6 @@ class WadHandler:
         self.wads: OrderedDict[Union[Path, str], Wad3Reader] = OrderedDict()
         self.textures: Dict[str, Image] = {}
         self.used_wads: List[Path] = []
-
-    def __del__(self):
-        shutdown_logger(logger)
 
     def get_wad_list(self) -> List[Path]:
         if not self.wad_list:

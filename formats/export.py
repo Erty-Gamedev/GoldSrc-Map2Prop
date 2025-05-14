@@ -53,7 +53,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                 entity.properties['_note'] = 'Modified by Map2Prop'
             else:
                 entity.properties['wad'] = ';'.join(
-                    ['/' + p.resolve().relative_to(p.anchor).as_posix()\
+                    ['/' + p.resolve().relative_to((p.resolve()).anchor).as_posix()\
                      for p in filereader.wadhandler.used_wads])
                 entity.properties['_note'] = 'Produced by Map2Prop'
 
@@ -502,7 +502,7 @@ def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
     with filepath.open('w') as file:
         for entity in filereader.entities:
             if entity.classname != 'func_map2prop':
-                file.write(entity.raw)
+                file.write(entity.raw())
                 continue
 
             kvs = entity.properties

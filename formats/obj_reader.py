@@ -40,6 +40,7 @@ class ObjObject:
 class Face(BaseFace):
     def __init__(self, points: List[Vector3D], vertices: List[Vertex], texture: str):
         self._points = points
+        self._plane_points = (Vector3D.zero(), Vector3D.zero(), Vector3D.zero())
         self._vertices = vertices
         self._polygons: List[Polygon] = []
         self._texture = Texture(texture)

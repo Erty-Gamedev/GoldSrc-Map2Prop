@@ -1,4 +1,3 @@
-from typing import List, Dict, Tuple
 from PIL import Image
 from pathlib import Path
 from io import BufferedReader
@@ -17,21 +16,21 @@ from formats.wad_handler import WadHandler
 
 @dataclass
 class JFaceVertex:
-    vertex: Tuple[float, float, float]
+    vertex: tuple[float, float, float]
     u: float
     v: float
 
 class Face(BaseFace):
     def __init__(
             self,
-            face_vertices: List[JFaceVertex],
+            face_vertices: list[JFaceVertex],
             texture: Texture,
             normal: Vector3D) -> None:
-        self._points: List[Vector3D] = []
-        self._polygons: List[Polygon] = []
+        self._points: list[Vector3D] = []
+        self._polygons: list[Polygon] = []
         self._texture: Texture = texture
         self._normal: Vector3D = normal
-        self._vertices: List[Vertex] = []
+        self._vertices: list[Vertex] = []
 
         for face_vertex in face_vertices:
             self._vertices.append(Vertex(
@@ -40,6 +39,12 @@ class Face(BaseFace):
                 self._normal
             ))
             self._points.append(Vector3D(*face_vertex.vertex))
+
+        self._plane_points = (
+            self._points[2],
+            self._points[1],
+            self._points[0]
+        )
         
         for triangle in ear_clip(self._points, self._normal):
             polygon = []
@@ -54,7 +59,7 @@ class Brush(BaseBrush):
     pass
 
 class Entity(BaseEntity):
-    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+    def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush]):
         self._classname = classname
         self._properties = properties
         self._brushes = brushes
@@ -70,10 +75,10 @@ class JmfReader(BaseReader):
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
         self.wadhandler = WadHandler(self.filedir, outputdir)
-        self.checked: List[str] = []
-        self.textures: Dict[str, ImageInfo] = {}
+        self.checked: list[str] = []
+        self.textures: dict[str, ImageInfo] = {}
         self.missing_textures: bool = False
-        self.entities: List[Entity] = []
+        self.entities: list[Entity] = []
 
         self.parse()
 
@@ -241,10 +246,6 @@ class JmfReader(BaseReader):
         faces_count = read_int(file)
         for _ in range(faces_count):
             face = self.readface(file)
-
-            if self.wadhandler.skip_face(face.texture.name):
-                continue
-
             faces.append(face)
 
         for _ in range(curves_count):
@@ -325,7 +326,7 @@ class JmfReader(BaseReader):
             width, height
         )
 
-        points: List[JFaceVertex] = []
+        points: list[JFaceVertex] = []
         for _ in range(vertex_count):
             vertex = read_vector3D(file)
             u = read_float(file)
