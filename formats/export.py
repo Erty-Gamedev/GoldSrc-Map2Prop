@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Optional, Final
+from typing import Final
 import os, subprocess
 from shutil import copy2
 from pathlib import Path
@@ -9,13 +9,13 @@ from configutil import config
 from formats.obj_reader import ObjReader
 from formats.map_reader import MapReader, BaseEntity
 from geoutil import (Polygon, Vertex, Vector3D, geometric_center,
-                     flip_faces, deg2rad, point_in_bounds,
-                     smooth_near_normals, smooth_all_normals)
+    flip_faces, deg2rad, point_in_bounds,
+    smooth_near_normals, smooth_all_normals)
 
 logger = logging.getLogger(__name__)
 
 
-CONVERT_TO_MAPPING: Final[Dict[int, str]] = {
+CONVERT_TO_MAPPING: Final[dict[int, str]] = {
     0: 'cycler',
     1: 'cycler_sprite',
     2: 'env_sprite',
@@ -28,22 +28,22 @@ CONVERT_TO_MAPPING: Final[Dict[int, str]] = {
 class RawModel:
     outname: str
     subdir: str
-    polygons: List[Polygon]
+    polygons: list[Polygon]
     offset: Vector3D
-    bounds: Tuple[Vector3D, Vector3D]
-    clip: Tuple[Vector3D, Vector3D]
+    bounds: tuple[Vector3D, Vector3D]
+    clip: tuple[Vector3D, Vector3D]
     smoothing: float
-    alwaysmooth: List[Tuple[Vector3D, Vector3D]]
-    neversmooth: List[Tuple[Vector3D, Vector3D]]
+    alwaysmooth: list[tuple[Vector3D, Vector3D]]
+    neversmooth: list[tuple[Vector3D, Vector3D]]
     scale: float
     rotation: float
-    maskedtextures: List[str]
+    maskedtextures: list[str]
     rename_chrome: bool
     qc_flags: str
 
 
-def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]:
-    models: Dict[str, RawModel] = {}
+def prepare_models(filename: str, filereader: BaseReader) -> dict[str, RawModel]:
+    models: dict[str, RawModel] = {}
     outputdir = config.output_dir
 
     n = 0
@@ -54,7 +54,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
             else:
                 entity.properties['wad'] = ';'.join(
                     ['/' + p.resolve().relative_to((p.resolve()).anchor).as_posix()\
-                     for p in filereader.wadhandler.used_wads])
+                    for p in filereader.wadhandler.used_wads])
                 entity.properties['_note'] = 'Produced by Map2Prop'
 
         if not entity.brushes:
@@ -232,22 +232,22 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 
 
 def vertex_in_list(vertex: Vertex,
-                   vertex_list: Dict[Vector3D, List[Vertex]]) -> Optional[Vector3D]:
+    vertex_list: dict[Vector3D, list[Vertex]]) -> Vector3D|None:
     for other in vertex_list:
         if vertex.v == other:
             return other
     return None
 
 
-def apply_smooth(models: Dict[str, RawModel]) -> None:
+def apply_smooth(models: dict[str, RawModel]) -> None:
     for model in models.values():
         if model.smoothing == 0.0:
             continue
 
-        vertices: Dict[Vector3D, List[Vertex]] = {}
-        flipped_vertices: Dict[Vector3D, List[Vertex]] = {}
-        always_smooth: Dict[Vector3D, List[Vertex]] = {}
-        flipped_always_smooth: Dict[Vector3D, List[Vertex]] = {}
+        vertices: dict[Vector3D, list[Vertex]] = {}
+        flipped_vertices: dict[Vector3D, list[Vertex]] = {}
+        always_smooth: dict[Vector3D, list[Vertex]] = {}
+        flipped_always_smooth: dict[Vector3D, list[Vertex]] = {}
         
         for polygon in model.polygons:
             for vertex in polygon.vertices:
@@ -286,7 +286,7 @@ def apply_smooth(models: Dict[str, RawModel]) -> None:
         smooth_all_normals(flipped_always_smooth)
 
 
-def rename_chrome(models: Dict[str, RawModel], outputdir: Path) -> None:
+def rename_chrome(models: dict[str, RawModel], outputdir: Path) -> None:
     for model in models.values():
         if not model.rename_chrome:
             continue
@@ -340,7 +340,7 @@ def process_models(filename: str, outputdir: Path, filereader: BaseReader) -> in
         can_compile = False
 
     returncodes = 0
-    failed: List[str] = []
+    failed: list[str] = []
     for model in processed:
         write_smd(model, outputdir, filereader)
         write_qc(model, outputdir)
@@ -493,7 +493,7 @@ def rewrite_map(filepath: Path, filereader: BaseReader) -> None:
 
     # Not a true edict as we all know and love.
     # It is just to map func_map2prop entities to their targetnames
-    edict: Dict[str, BaseEntity] = {}
+    edict: dict[str, BaseEntity] = {}
     for entity in filereader.entities:
         if entity.classname != 'func_map2prop':
             continue
