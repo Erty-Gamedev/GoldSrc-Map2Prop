@@ -1,61 +1,40 @@
-from typing import List, Union, Tuple, Dict, Self
+from typing import Self, Final
 from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
 from ear_clip import ear_clip
-from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal, points_to_plane
 from vector3d import Vector3D
+from geoutil import (Polygon, Vertex, ImageInfo, Texture, PI, cos, sin,
+                    plane_normal, textureaxisfromplane)
 from formats import (read_bool, read_int, read_float, read_ntstring,
-                     read_lpstring, read_colour, read_vector3D,
-                     InvalidFormatException, MissingTextureException)
-from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity, MAP_NDIGITS
+                    read_lpstring, read_colour, read_vector3D,
+                    InvalidFormatException, MissingTextureException,
+                    UnsupportedFormatException)
+from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
 
 
-BASE_AXIS: list[Vector3D] = [
-    Vector3D(0, 0, 1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),   # Floor
-    Vector3D(0, 0, -1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),  # Ceiling
-    Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),   # West wall
-    Vector3D(-1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),  # East wall
-    Vector3D(0, 1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),   # South wall
-    Vector3D(0, -1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),  # North wall
-]
-
-def textureaxisfromplane(plane_normal: Vector3D) -> tuple[Vector3D, Vector3D]:
-    bestaxis = 0
-    dot = 0.0
-    best = 0.0
-
-    for i in range(6):
-        dot = plane_normal.dot(BASE_AXIS[i*3])
-        if dot > best:
-            best = dot
-            bestaxis = i
-    
-    return BASE_AXIS[bestaxis*3+1], BASE_AXIS[bestaxis*3+2]
+SUPPORTED_VERSIONS: Final[list[int]] = [16, 18, 22]
 
 
 class Face(BaseFace):
     def __init__(self,
-                 points: list[Vector3D],
-                 plane_points: tuple[Vector3D, Vector3D, Vector3D],
-                 texture: Texture):
+                points: list[Vector3D],
+                plane_points: tuple[Vector3D, Vector3D, Vector3D],
+                texture: Texture):
         self._points = points
         self._plane_points = plane_points
-        self._polygons: List[Polygon] = []
+        self._polygons: list[Polygon] = []
         self._texture = texture
-        self._vertices: List[Vertex] = []
+        self._vertices: list[Vertex] = []
         self._normal: Vector3D = plane_normal(self._plane_points[::-1])
 
         for point in self.points:
             u, v = self.project_uv(Vector3D(*point))
             self._vertices.append(Vertex(
-                Vector3D(*point),
-                Vector3D(
-                    u / self.texture.width,
-                    v / self.texture.height,
-                    0),
+                point,
+                Vector3D(u, -v, 0),
                 self._normal
             ))
 
@@ -71,29 +50,11 @@ class Face(BaseFace):
     @property
     def normal(self): return self._normal
 
-    def project_uv(self, point: Vector3D):
-        # Get texture plane normal, not face plane normal
-        plane_normal = Vector3D(*self.texture.rightaxis).cross(
-            Vector3D(*self.texture.downaxis))
-
-        projected = point - (point.dot(plane_normal) * plane_normal)
-
-        u = self.texture.shiftx * self.texture.scalex
-        v = -self.texture.shifty * self.texture.scaley
-
-        u += projected.dot(self.texture.rightaxis)
-        v -= projected.dot(self.texture.downaxis)
-
-        # Apply scale:
-        u, v = u / self.texture.scalex, v / self.texture.scaley
-
-        return u, v
-
 class Brush(BaseBrush):
     pass
 
 class Entity(BaseEntity):
-    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+    def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush]):
         self._classname = classname
         self._properties = properties
         self._brushes = brushes
@@ -102,21 +63,28 @@ class Entity(BaseEntity):
 
 @dataclass
 class Group:
-    children: List[Union[Brush, Entity, Self]]
+    children: list[Brush|Entity|Self]
 
 
 class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path, outputdir: Path, fileBuffer: BufferedReader|None = None):
+    def __init__(
+            self, filepath: Path, outputdir: Path,
+            fileBuffer: BufferedReader|None = None,
+            wadhandler: WadHandler|None = None):
         self.filepath = filepath
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
-        self.wadhandler = WadHandler(self.filedir, outputdir)
-        self.checked: List[str] = []
-        self.textures: Dict[str, ImageInfo] = {}
+        self.checked: list[str] = []
+        self.textures: dict[str, ImageInfo] = {}
         self.missing_textures: bool = False
-        self.entities: List[Entity] = []
+        self.entities: list[Entity] = []
+
+        if wadhandler is None:
+            self.wadhandler = WadHandler(self.filedir, outputdir)
+        else:
+            self.wadhandler = wadhandler
 
         if fileBuffer is None:
             with self.filepath.open('rb') as file:
@@ -125,49 +93,56 @@ class RmfReader(BaseReader):
             self.parse(fileBuffer)
 
     def parse(self, file: BufferedReader) -> None:
-            self.version = round(read_float(file), 1)
+        self.version = int(round(read_float(file), 1) * 10)  # Use fixed-point instead
+        
+        if self.version not in SUPPORTED_VERSIONS:
+            supported_str = [f"{v/10:.1f}" for v in SUPPORTED_VERSIONS]
+            raise UnsupportedFormatException(
+                f"{self.filepath} is not a supported RMF file "\
+                    f"(was {self.version/10:.1f}, but only {', '.join(supported_str)} "\
+                    'are supported)')
 
-            magic = file.read(3)
-            if magic != bytes('RMF', 'ascii'):
-                raise InvalidFormatException(
-                    f"{self.filepath} is not a valid RMF file.")
+        magic = file.read(3)
+        if magic != bytes('RMF', 'ascii'):
+            raise InvalidFormatException(
+                f"{self.filepath} is not a valid RMF file.")
 
-            visgroups_count = read_int(file)
-            for _ in range(visgroups_count):
-                self.readvisgroup(file)
+        visgroups_count = read_int(file)
+        for _ in range(visgroups_count):
+            self.readvisgroup(file)
 
-            read_lpstring(file)  # "CMapWorld"
-            file.read(7)  # Padding bytes?
+        read_lpstring(file)  # "CMapWorld"
+        file.read(7)  # Padding bytes?
 
-            objects: List[Union[Brush, Entity, Group]] = []
-            objects_count = read_int(file)
-            for _ in range(objects_count):
-                objects.append(self.readobject(file))
+        objects: list[Brush|Entity|Group] = []
+        objects_count = read_int(file)
+        for _ in range(objects_count):
+            objects.append(self.readobject(file))
 
-            read_lpstring(file)  # "worldspawn"
-            file.read(4)  # Padding?
+        read_lpstring(file)  # "worldspawn"
+        file.read(4)  # Padding?
 
-            spawnflags = read_int(file)
+        spawnflags = read_int(file)
 
-            properties: Dict[str, str] = {}
-            properties_count = read_int(file)
-            for _ in range(properties_count):
-                p_name = read_lpstring(file)
-                properties[p_name] = read_lpstring(file)
-            file.read(12)  # Padding?
+        properties: dict[str, str] = {}
+        properties_count = read_int(file)
+        for _ in range(properties_count):
+            p_name = read_lpstring(file)
+            properties[p_name] = read_lpstring(file)
+        file.read(12)  # Padding?
 
-            if 'spawnflags' not in properties:
-                properties['spawnflags'] = str(spawnflags)
+        if 'spawnflags' not in properties:
+            properties['spawnflags'] = str(spawnflags)
 
-            self.worldspawn = Entity('worldspawn', properties, [])
-            self.entities = [self.worldspawn]
+        self.worldspawn = Entity('worldspawn', properties, [])
+        self.entities = [self.worldspawn]
 
-            for obj in objects:
-                self.addobject(obj)
+        for obj in objects:
+            self.addobject(obj)
 
-            path_count = read_int(file)
-            for _ in range(path_count):
-                self.readpath(file)
+        path_count = read_int(file)
+        for _ in range(path_count):
+            self.readpath(file)
 
     def readvisgroup(self, file: BufferedReader) -> None:
         read_ntstring(file, 128)  # Name
@@ -178,7 +153,7 @@ class RmfReader(BaseReader):
         file.read(3)              # Padding bytes
 
     def readobject(self, file: BufferedReader
-        ) -> Union[Brush, Entity, Group]:
+        ) -> Brush|Entity|Group:
         typename = read_lpstring(file)
 
         if typename == 'CMapSolid':
@@ -216,7 +191,7 @@ class RmfReader(BaseReader):
         return self.textures[texture]
 
     def readface(self, file: BufferedReader) -> Face:
-        if self.version < 1.8:
+        if self.version < 18:
             name = read_ntstring(file, 40)
         else:
             name = read_ntstring(file, 260)
@@ -227,20 +202,19 @@ class RmfReader(BaseReader):
                 self.missing_textures = True
             self.checked.append(name)
 
-        if self.version < 2.2:
+        if self.version < 22:
+            angle = read_float(file)
             shiftx = read_float(file)
             shifty = read_float(file)
-            angle = read_float(file)
-            scalex = read_float(file)
-            scaley = read_float(file)
         else:
             rightaxis = read_vector3D(file)
             shiftx = read_float(file)
             downaxis = read_vector3D(file)
             shifty = read_float(file)
             angle = read_float(file)
-            scalex = read_float(file)
-            scaley = read_float(file)
+
+        scalex = read_float(file)
+        scaley = read_float(file)
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES\
             and name.lower() not in self.wadhandler.TOOL_TEXTURES:
@@ -251,7 +225,7 @@ class RmfReader(BaseReader):
             width = 16
             height = 16
 
-        if self.version < 1.8:
+        if self.version < 18:
             file.read(4)  # Padding
         else:
             file.read(16)  # Padding
@@ -269,11 +243,29 @@ class RmfReader(BaseReader):
             Vector3D(*read_vector3D(file)),
         )
 
-        if self.version < 2.2:
-            plane_normal = plane_normal(plane_points[::-1])
-            xv, yv = textureaxisfromplane(plane_normal)
-            rightaxis = (xv.x, xv.y, xv.z)
-            downaxis = (yv.x, yv.y, yv.z)
+        if self.version < 22:
+            normal = plane_normal(plane_points[::-1])
+            xv, yv = textureaxisfromplane(normal)
+            vecs = ([xv.x, xv.y, xv.z], [yv.x, yv.y, yv.z])
+            theta = angle / 180 * PI
+            sinv = sin(theta)
+            cosv = cos(theta)
+
+            if round(vecs[0][0]): sv = 0
+            elif round(vecs[0][1]): sv = 1
+            else: sv = 2
+
+            if round(vecs[1][0]): tv = 0
+            elif round(vecs[1][1]): tv = 1
+            else: tv = 2
+
+            for i in range(2):
+                ns = cosv * vecs[i][sv] - sinv * vecs[i][tv]
+                nt = sinv * vecs[i][sv] + cosv * vecs[i][tv]
+                vecs[i][sv] = ns
+                vecs[i][tv] = nt
+            rightaxis = tuple(vecs[0])
+            downaxis = tuple(vecs[1])
 
         texture = Texture(
             name,
@@ -324,14 +316,14 @@ class RmfReader(BaseReader):
         read_int(file)  # Visgroup id
         read_colour(file)  # Editor colour
 
-        children: List[Union[Brush, Entity, Group]] = []
+        children: list[Brush|Entity|Group] = []
         object_count = read_int(file)
         for _ in range(object_count):
             children.append(self.readobject(file))
 
         return Group(children)
 
-    def addobject(self, obj: Union[Brush, Entity, Group]):
+    def addobject(self, obj: Brush|Entity|Group):
         if isinstance(obj, Entity):
             self.entities.append(obj)
         elif isinstance(obj, Brush):

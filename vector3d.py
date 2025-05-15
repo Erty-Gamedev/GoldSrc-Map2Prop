@@ -49,6 +49,10 @@ class Vector3D(list):
             self.z * b[0] - self.x * b[2],
             self.x * b[1] - self.y * b[0]
         )
+    
+    def copy(self):
+        """Return a copy of the vector"""
+        return Vector3D(self.x, self.y, self.z)
 
     def __eq__(self, b) -> bool:
         return (

@@ -93,7 +93,8 @@ def main() -> None:
         from formats.ol_reader import OLReader
         libary_reader = OLReader(filepath, outputdir)
 
-        logger.info(f"Processing prefab library with {libary_reader.dir_num_entries} prefabs")
+        logger.info(f"Finished reading prefab library, "\
+                    f"proceeding to convert {libary_reader.dir_num_entries} models")
 
         for prefabname, filereader in libary_reader.rmf_files.items():
             returncode = process_models(prefabname, outputdir, filereader)

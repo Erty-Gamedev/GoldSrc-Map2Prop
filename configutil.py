@@ -13,7 +13,7 @@ from logutil import shutdown_logger
 from pathlib import Path
 
 
-VERSION: Final[str] = '1.2.5'
+VERSION: Final[str] = '1.2.6'
 
 
 @dataclasses.dataclass

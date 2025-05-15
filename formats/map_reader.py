@@ -20,14 +20,8 @@ class Face(BaseFace):
         self._texture = texture
         self._normal = normal
 
-        nu, nv = texture.rightaxis, texture.downaxis
-        w, h = texture.width, texture.height
-        su, sv = texture.scalex, texture.scaley
-        ou, ov = texture.shiftx, texture.shifty
-
         for point in self._points:
-            u = (point.dot(nu)/w)/su + ou/w
-            v = (point.dot(nv)/h)/sv + ov/h
+            u, v = self.project_uv(Vector3D(*point))
 
             self._vertices.append(Vertex(
                 point,

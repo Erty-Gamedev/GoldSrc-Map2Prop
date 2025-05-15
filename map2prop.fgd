@@ -34,4 +34,9 @@
 		4: "monster_furniture"
 		5: "monster_generic"
 	]
+	use_world_origin(choices) : "Use world origin" : "" =
+	[
+		"": "No (calculate bottom-center)"
+		1: "Yes"
+	]
 ]

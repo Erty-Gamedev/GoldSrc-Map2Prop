@@ -106,10 +106,11 @@ def read_angles(file: BufferedReader) -> Tuple[float, float, float]:
 class InvalidFormatException(Exception):
     pass
 
+class UnsupportedFormatException(Exception):
+    pass
 
 class EndOfFileException(Exception):
     pass
-
 
 class MissingTextureException(Exception):
     pass
