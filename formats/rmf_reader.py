@@ -4,12 +4,12 @@ from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
 from ear_clip import ear_clip
-from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal, points_to_plane
+from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
                      read_lpstring, read_colour, read_vector3D,
                      InvalidFormatException, MissingTextureException)
-from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity, MAP_NDIGITS
+from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
 
 
@@ -108,15 +108,22 @@ class Group:
 class RmfReader(BaseReader):
     """Reads a .rmf format file and parses geometry data."""
 
-    def __init__(self, filepath: Path, outputdir: Path, fileBuffer: BufferedReader|None = None):
+    def __init__(
+            self, filepath: Path, outputdir: Path,
+            fileBuffer: BufferedReader|None = None,
+            wadhandler: WadHandler|None = None):
         self.filepath = filepath
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
-        self.wadhandler = WadHandler(self.filedir, outputdir)
         self.checked: List[str] = []
         self.textures: Dict[str, ImageInfo] = {}
         self.missing_textures: bool = False
         self.entities: List[Entity] = []
+        
+        if wadhandler is None:
+            self.wadhandler = WadHandler(self.filedir, outputdir)
+        else:
+            self.wadhandler = wadhandler
 
         if fileBuffer is None:
             with self.filepath.open('rb') as file:
