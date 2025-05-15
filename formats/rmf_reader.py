@@ -203,19 +203,18 @@ class RmfReader(BaseReader):
             self.checked.append(name)
 
         if self.version < 22:
+            angle = read_float(file)
             shiftx = read_float(file)
             shifty = read_float(file)
-            angle = read_float(file)
-            scalex = read_float(file)
-            scaley = read_float(file)
         else:
             rightaxis = read_vector3D(file)
             shiftx = read_float(file)
             downaxis = read_vector3D(file)
             shifty = read_float(file)
             angle = read_float(file)
-            scalex = read_float(file)
-            scaley = read_float(file)
+
+        scalex = read_float(file)
+        scaley = read_float(file)
 
         if name.lower() not in self.wadhandler.SKIP_TEXTURES\
             and name.lower() not in self.wadhandler.TOOL_TEXTURES:
@@ -245,9 +244,28 @@ class RmfReader(BaseReader):
         )
 
         if self.version < 22:
-            xv, yv = textureaxisfromplane(plane_normal(plane_points))
-            rightaxis = (xv.x, xv.y, xv.z)
-            downaxis = (yv.x, yv.y, yv.z)
+            normal = plane_normal(plane_points[::-1])
+            xv, yv = textureaxisfromplane(normal)
+            vecs = ([xv.x, xv.y, xv.z], [yv.x, yv.y, yv.z])
+            theta = angle / 180 * PI
+            sinv = sin(theta)
+            cosv = cos(theta)
+
+            if round(vecs[0][0]): sv = 0
+            elif round(vecs[0][1]): sv = 1
+            else: sv = 2
+
+            if round(vecs[1][0]): tv = 0
+            elif round(vecs[1][1]): tv = 1
+            else: tv = 2
+
+            for i in range(2):
+                ns = cosv * vecs[i][sv] - sinv * vecs[i][tv]
+                nt = sinv * vecs[i][sv] + cosv * vecs[i][tv]
+                vecs[i][sv] = ns
+                vecs[i][tv] = nt
+            rightaxis = tuple(vecs[0])
+            downaxis = tuple(vecs[1])
 
         texture = Texture(
             name,
