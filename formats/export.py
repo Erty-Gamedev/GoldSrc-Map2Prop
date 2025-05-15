@@ -81,7 +81,7 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
                         entity.properties['origin'] = f"{ori.x} {ori.y} {ori.z}"
                         break
                 continue  # Don't need to do anything else
-            if ('own_model' in entity.properties and entity.properties['own_model'] == '1')\
+            if ('own_model' in entity.properties and int(entity.properties['own_model']))\
                 or config.mapcompile:
                 own_model = True
                 outname = f"{filename}_{n}"
@@ -210,7 +210,24 @@ def prepare_models(filename: str, filereader: BaseReader) -> Dict[str, RawModel]
 
             if brush.has_contentwater:
                 models[outname].polygons.extend(flip_faces(brush.all_polygons))
-    
+
+        if (models[outname].offset == Vector3D.zero()
+            and not ('use_world_origin' in entity.properties
+                and int(entity.properties['use_world_origin']))):
+            aabb_min = models[outname].polygons[0].vertices[0].v.copy()
+            aabb_max = models[outname].polygons[0].vertices[0].v.copy()
+            for polygon in models[outname].polygons:
+                for vertex in polygon.vertices:
+                    if vertex.v.x < aabb_min.x: aabb_min.x = vertex.v.x
+                    if vertex.v.y < aabb_min.y: aabb_min.y = vertex.v.y
+                    if vertex.v.z < aabb_min.z: aabb_min.z = vertex.v.z
+                    if vertex.v.x > aabb_max.x: aabb_max.x = vertex.v.x
+                    if vertex.v.y > aabb_max.y: aabb_max.y = vertex.v.y
+                    if vertex.v.z > aabb_max.z: aabb_max.z = vertex.v.z
+            height = aabb_max.z - aabb_min.z
+            models[outname].offset = geometric_center([aabb_min, aabb_max])
+            models[outname].offset.z -= height / 2
+
     return models
 
 
