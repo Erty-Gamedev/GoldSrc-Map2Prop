@@ -36,6 +36,14 @@ class BaseFace(ABC):
     @property
     def plane_points(self) -> tuple[Vector3D, Vector3D, Vector3D]: return self._plane_points
     def __repr__(self) -> str: return f"Face({self.texture.name})"
+    
+    def project_uv(self, point: Vector3D):
+        nu, nv = self.texture.rightaxis, self.texture.downaxis
+        w, h = self.texture.width, self.texture.height
+        su, sv = self.texture.scalex, self.texture.scaley
+        ou, ov = self.texture.shiftx, self.texture.shifty
+
+        return (point.dot(nu)/w)/su + ou/w, (point.dot(nv)/h)/sv + ov/h
 
 
 class BaseBrush(ABC):

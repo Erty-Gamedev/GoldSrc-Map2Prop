@@ -33,11 +33,8 @@ class Face(BaseFace):
         for point in self.points:
             u, v = self.project_uv(Vector3D(*point))
             self._vertices.append(Vertex(
-                Vector3D(*point),
-                Vector3D(
-                    u / self.texture.width,
-                    v / self.texture.height,
-                    0),
+                point,
+                Vector3D(u, -v, 0),
                 self._normal
             ))
 
@@ -52,24 +49,6 @@ class Face(BaseFace):
 
     @property
     def normal(self): return self._normal
-
-    def project_uv(self, point: Vector3D):
-        # Get texture plane normal, not face plane normal
-        plane_normal = Vector3D(*self.texture.rightaxis).cross(
-            Vector3D(*self.texture.downaxis))
-
-        projected = point - (point.dot(plane_normal) * plane_normal)
-
-        u = self.texture.shiftx * self.texture.scalex
-        v = -self.texture.shifty * self.texture.scaley
-
-        u += projected.dot(self.texture.rightaxis)
-        v -= projected.dot(self.texture.downaxis)
-
-        # Apply scale:
-        u, v = u / self.texture.scalex, v / self.texture.scaley
-
-        return u, v
 
 class Brush(BaseBrush):
     pass
