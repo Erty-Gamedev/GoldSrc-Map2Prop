@@ -1,3 +1,4 @@
+from typing import Final
 from PIL import Image
 from pathlib import Path
 from io import BufferedReader
@@ -9,9 +10,12 @@ from formats import (read_bool, read_int, read_short, read_float, read_double,
                      read_ntstring, read_lpstring2, read_colour_rgba,
                      read_vector3D, read_angles,
                      InvalidFormatException, EndOfFileException,
-                     MissingTextureException)
+                     MissingTextureException, UnsupportedFormatException)
 from formats.base_classes import BaseReader, BaseEntity, BaseBrush, BaseFace
 from formats.wad_handler import WadHandler
+
+
+SUPPORTED_VERSIONS: Final[list[int]] = [121, 122]
 
 
 @dataclass
@@ -92,6 +96,12 @@ class JmfReader(BaseReader):
             # JMF format version.
             # Was 121 before december 2023 update, became 122 after.
             jmf_version = read_int(file)
+
+            if jmf_version not in SUPPORTED_VERSIONS:
+                raise UnsupportedFormatException(
+                    f"{self.filepath} is not a supported JMF file "\
+                    f"(was {jmf_version}, but only {', '.join(SUPPORTED_VERSIONS)} "\
+                    'are supported)')
 
             export_path_count = read_int(file)
             for _ in range(export_path_count):

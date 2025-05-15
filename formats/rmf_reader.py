@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Dict, Self
+from typing import List, Union, Tuple, Dict, Self, Final
 from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
@@ -7,10 +7,14 @@ from ear_clip import ear_clip
 from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
 from vector3d import Vector3D
 from formats import (read_bool, read_int, read_float, read_ntstring,
-                     read_lpstring, read_colour, read_vector3D,
-                     InvalidFormatException, MissingTextureException)
+                    read_lpstring, read_colour, read_vector3D,
+                    InvalidFormatException, MissingTextureException,
+                    UnsupportedFormatException)
 from formats.base_classes import BaseReader, BaseFace, BaseBrush, BaseEntity
 from formats.wad_handler import WadHandler
+
+
+SUPPORTED_VERSIONS: Final[list[int]] = [16, 18, 22]
 
 
 BASE_AXIS: list[Vector3D] = [
@@ -119,7 +123,7 @@ class RmfReader(BaseReader):
         self.textures: Dict[str, ImageInfo] = {}
         self.missing_textures: bool = False
         self.entities: List[Entity] = []
-        
+
         if wadhandler is None:
             self.wadhandler = WadHandler(self.filedir, outputdir)
         else:
@@ -132,49 +136,56 @@ class RmfReader(BaseReader):
             self.parse(fileBuffer)
 
     def parse(self, file: BufferedReader) -> None:
-            self.version = round(read_float(file), 1)
+        self.version = int(round(read_float(file), 1) * 10)  # Use fixed-point instead
+        
+        if self.version not in SUPPORTED_VERSIONS:
+            supported_str = [f"{v/10:.1f}" for v in SUPPORTED_VERSIONS]
+            raise UnsupportedFormatException(
+                f"{self.filepath} is not a supported RMF file "\
+                    f"(was {self.version/10:.1f}, but only {', '.join(supported_str)} "\
+                    'are supported)')
 
-            magic = file.read(3)
-            if magic != bytes('RMF', 'ascii'):
-                raise InvalidFormatException(
-                    f"{self.filepath} is not a valid RMF file.")
+        magic = file.read(3)
+        if magic != bytes('RMF', 'ascii'):
+            raise InvalidFormatException(
+                f"{self.filepath} is not a valid RMF file.")
 
-            visgroups_count = read_int(file)
-            for _ in range(visgroups_count):
-                self.readvisgroup(file)
+        visgroups_count = read_int(file)
+        for _ in range(visgroups_count):
+            self.readvisgroup(file)
 
-            read_lpstring(file)  # "CMapWorld"
-            file.read(7)  # Padding bytes?
+        read_lpstring(file)  # "CMapWorld"
+        file.read(7)  # Padding bytes?
 
-            objects: List[Union[Brush, Entity, Group]] = []
-            objects_count = read_int(file)
-            for _ in range(objects_count):
-                objects.append(self.readobject(file))
+        objects: List[Union[Brush, Entity, Group]] = []
+        objects_count = read_int(file)
+        for _ in range(objects_count):
+            objects.append(self.readobject(file))
 
-            read_lpstring(file)  # "worldspawn"
-            file.read(4)  # Padding?
+        read_lpstring(file)  # "worldspawn"
+        file.read(4)  # Padding?
 
-            spawnflags = read_int(file)
+        spawnflags = read_int(file)
 
-            properties: Dict[str, str] = {}
-            properties_count = read_int(file)
-            for _ in range(properties_count):
-                p_name = read_lpstring(file)
-                properties[p_name] = read_lpstring(file)
-            file.read(12)  # Padding?
+        properties: Dict[str, str] = {}
+        properties_count = read_int(file)
+        for _ in range(properties_count):
+            p_name = read_lpstring(file)
+            properties[p_name] = read_lpstring(file)
+        file.read(12)  # Padding?
 
-            if 'spawnflags' not in properties:
-                properties['spawnflags'] = str(spawnflags)
+        if 'spawnflags' not in properties:
+            properties['spawnflags'] = str(spawnflags)
 
-            self.worldspawn = Entity('worldspawn', properties, [])
-            self.entities = [self.worldspawn]
+        self.worldspawn = Entity('worldspawn', properties, [])
+        self.entities = [self.worldspawn]
 
-            for obj in objects:
-                self.addobject(obj)
+        for obj in objects:
+            self.addobject(obj)
 
-            path_count = read_int(file)
-            for _ in range(path_count):
-                self.readpath(file)
+        path_count = read_int(file)
+        for _ in range(path_count):
+            self.readpath(file)
 
     def readvisgroup(self, file: BufferedReader) -> None:
         read_ntstring(file, 128)  # Name
@@ -223,7 +234,7 @@ class RmfReader(BaseReader):
         return self.textures[texture]
 
     def readface(self, file: BufferedReader) -> Face:
-        if self.version < 1.8:
+        if self.version < 18:
             name = read_ntstring(file, 40)
         else:
             name = read_ntstring(file, 260)
@@ -234,7 +245,7 @@ class RmfReader(BaseReader):
                 self.missing_textures = True
             self.checked.append(name)
 
-        if self.version < 2.2:
+        if self.version < 22:
             shiftx = read_float(file)
             shifty = read_float(file)
             angle = read_float(file)
@@ -258,7 +269,7 @@ class RmfReader(BaseReader):
             width = 16
             height = 16
 
-        if self.version < 1.8:
+        if self.version < 18:
             file.read(4)  # Padding
         else:
             file.read(16)  # Padding
@@ -276,9 +287,8 @@ class RmfReader(BaseReader):
             Vector3D(*read_vector3D(file)),
         )
 
-        if self.version < 2.2:
-            plane_normal = plane_normal(plane_points[::-1])
-            xv, yv = textureaxisfromplane(plane_normal)
+        if self.version < 22:
+            xv, yv = textureaxisfromplane(plane_normal(plane_points))
             rightaxis = (xv.x, xv.y, xv.z)
             downaxis = (yv.x, yv.y, yv.z)
 
