@@ -405,3 +405,24 @@ def point_in_bounds(point: Vector3D, bounds: Bounds) -> bool:
     return point.x > bmin.x and point.x < bmax.x\
         and point.y > bmin.y and point.y < bmax.y\
         and point.z > bmin.z and point.z < bmax.z
+
+
+BASE_AXIS: Final[list[Vector3D]] = [
+    Vector3D(0, 0, 1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),   # Floor
+    Vector3D(0, 0, -1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),  # Ceiling
+    Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),   # West wall
+    Vector3D(-1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),  # East wall
+    Vector3D(0, 1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),   # South wall
+    Vector3D(0, -1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),  # North wall
+]
+def textureaxisfromplane(plane_normal: Vector3D) -> tuple[Vector3D, Vector3D]:
+    bestaxis = 0
+    best = 0.0
+
+    for i in range(6):
+        dot = plane_normal.dot(BASE_AXIS[i*3])
+        if dot > best:
+            best = dot
+            bestaxis = i
+    
+    return BASE_AXIS[bestaxis*3+1], BASE_AXIS[bestaxis*3+2]

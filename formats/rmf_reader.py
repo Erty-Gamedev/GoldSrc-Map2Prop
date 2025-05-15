@@ -4,8 +4,9 @@ from pathlib import Path
 from dataclasses import dataclass
 from io import BufferedReader
 from ear_clip import ear_clip
-from geoutil import Polygon, Vertex, ImageInfo, Texture, plane_normal
 from vector3d import Vector3D
+from geoutil import (Polygon, Vertex, ImageInfo, Texture, PI, cos, sin,
+                    plane_normal, textureaxisfromplane)
 from formats import (read_bool, read_int, read_float, read_ntstring,
                     read_lpstring, read_colour, read_vector3D,
                     InvalidFormatException, MissingTextureException,
@@ -15,29 +16,6 @@ from formats.wad_handler import WadHandler
 
 
 SUPPORTED_VERSIONS: Final[list[int]] = [16, 18, 22]
-
-
-BASE_AXIS: list[Vector3D] = [
-    Vector3D(0, 0, 1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),   # Floor
-    Vector3D(0, 0, -1), Vector3D(1, 0, 0), Vector3D(0, -1, 0),  # Ceiling
-    Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),   # West wall
-    Vector3D(-1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, -1),  # East wall
-    Vector3D(0, 1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),   # South wall
-    Vector3D(0, -1, 0), Vector3D(1, 0, 0), Vector3D(0, 0, -1),  # North wall
-]
-
-def textureaxisfromplane(plane_normal: Vector3D) -> tuple[Vector3D, Vector3D]:
-    bestaxis = 0
-    dot = 0.0
-    best = 0.0
-
-    for i in range(6):
-        dot = plane_normal.dot(BASE_AXIS[i*3])
-        if dot > best:
-            best = dot
-            bestaxis = i
-    
-    return BASE_AXIS[bestaxis*3+1], BASE_AXIS[bestaxis*3+2]
 
 
 class Face(BaseFace):
