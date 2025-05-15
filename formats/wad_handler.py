@@ -1,4 +1,4 @@
-from typing import List, OrderedDict, Dict, Union, Literal
+from typing import OrderedDict, Literal
 from pathlib import Path
 from collections import OrderedDict
 from PIL.Image import Image
@@ -33,13 +33,13 @@ class WadHandler:
     def __init__(self, filedir: Path, outputdir: Path):
         self.filedir: Path = filedir
         self.outputdir = outputdir
-        self.wad_list: List[Path] = []
+        self.wad_list: list[Path] = []
         self.cache_size: int = config.wad_cache
-        self.wads: OrderedDict[Union[Path, str], Wad3Reader] = OrderedDict()
-        self.textures: Dict[str, Image] = {}
-        self.used_wads: List[Path] = []
+        self.wads: OrderedDict[Path|str, Wad3Reader] = OrderedDict()
+        self.textures: dict[str, Image] = {}
+        self.used_wads: list[Path] = []
 
-    def get_wad_list(self) -> List[Path]:
+    def get_wad_list(self) -> list[Path]:
         if not self.wad_list:
             wad_list = []
 
@@ -48,7 +48,7 @@ class WadHandler:
                 wad_list.extend(config.wad_list)
 
             # Prioritise .wad files from mod folder and handle Steampipe
-            globs: List[Path] = []
+            globs: list[Path] = []
             if modpath := config.mod_path:
                 if '_addon' in str(modpath):
                     globs.extend(modpath.glob('*.wad'))
@@ -83,7 +83,7 @@ class WadHandler:
             self.wads[wad] = Wad3Reader(wad)
         return self.wads[wad]
 
-    def check_wads(self, texture: str) -> Union[Wad3Reader, Literal[False]]:
+    def check_wads(self, texture: str) -> Wad3Reader|Literal[False]:
         for wad in self.get_wad_list():
             reader = self.get_wad_reader(wad)
             if texture in reader:
@@ -102,7 +102,7 @@ class WadHandler:
         
         texfile = f"{texture}.bmp"
 
-        reader: Union[Wad3Reader, Literal[False]] = self.check_wads(texture)
+        reader: Wad3Reader|Literal[False] = self.check_wads(texture)
 
         if (self.outputdir / texfile).exists():
             return True
@@ -125,7 +125,7 @@ class WadHandler:
     def get_texture(self, texture: str) -> Image:
         return self.textures[texture]
 
-    def check_wad_path(self, wad: Path, map_filepath: Path) -> Union[Path, Literal[False]]:
+    def check_wad_path(self, wad: Path, map_filepath: Path) -> Path|Literal[False]:
         """MAP files don't include the drive letter in the WAD list key, so let's try to handle that."""
 
         # File exists, no need to do anything
@@ -148,7 +148,7 @@ class WadHandler:
         
         return False
 
-    def set_wadlist(self, wads: List[str], map_filepath: Path) -> None:
+    def set_wadlist(self, wads: list[str], map_filepath: Path) -> None:
         if not wads: return
         wadlist = []
         for wad in wads:

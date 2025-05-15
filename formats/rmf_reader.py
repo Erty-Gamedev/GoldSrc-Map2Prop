@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Dict, Self, Final
+from typing import Self, Final
 from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
@@ -20,14 +20,14 @@ SUPPORTED_VERSIONS: Final[list[int]] = [16, 18, 22]
 
 class Face(BaseFace):
     def __init__(self,
-                 points: list[Vector3D],
-                 plane_points: tuple[Vector3D, Vector3D, Vector3D],
-                 texture: Texture):
+                points: list[Vector3D],
+                plane_points: tuple[Vector3D, Vector3D, Vector3D],
+                texture: Texture):
         self._points = points
         self._plane_points = plane_points
-        self._polygons: List[Polygon] = []
+        self._polygons: list[Polygon] = []
         self._texture = texture
-        self._vertices: List[Vertex] = []
+        self._vertices: list[Vertex] = []
         self._normal: Vector3D = plane_normal(self._plane_points[::-1])
 
         for point in self.points:
@@ -54,7 +54,7 @@ class Brush(BaseBrush):
     pass
 
 class Entity(BaseEntity):
-    def __init__(self, classname: str, properties: Dict[str, str], brushes: List[Brush]):
+    def __init__(self, classname: str, properties: dict[str, str], brushes: list[Brush]):
         self._classname = classname
         self._properties = properties
         self._brushes = brushes
@@ -63,7 +63,7 @@ class Entity(BaseEntity):
 
 @dataclass
 class Group:
-    children: List[Union[Brush, Entity, Self]]
+    children: list[Brush|Entity|Self]
 
 
 class RmfReader(BaseReader):
@@ -76,10 +76,10 @@ class RmfReader(BaseReader):
         self.filepath = filepath
         self.filedir = self.filepath.parent
         self.outputdir = outputdir
-        self.checked: List[str] = []
-        self.textures: Dict[str, ImageInfo] = {}
+        self.checked: list[str] = []
+        self.textures: dict[str, ImageInfo] = {}
         self.missing_textures: bool = False
-        self.entities: List[Entity] = []
+        self.entities: list[Entity] = []
 
         if wadhandler is None:
             self.wadhandler = WadHandler(self.filedir, outputdir)
@@ -114,7 +114,7 @@ class RmfReader(BaseReader):
         read_lpstring(file)  # "CMapWorld"
         file.read(7)  # Padding bytes?
 
-        objects: List[Union[Brush, Entity, Group]] = []
+        objects: list[Brush|Entity|Group] = []
         objects_count = read_int(file)
         for _ in range(objects_count):
             objects.append(self.readobject(file))
@@ -124,7 +124,7 @@ class RmfReader(BaseReader):
 
         spawnflags = read_int(file)
 
-        properties: Dict[str, str] = {}
+        properties: dict[str, str] = {}
         properties_count = read_int(file)
         for _ in range(properties_count):
             p_name = read_lpstring(file)
@@ -153,7 +153,7 @@ class RmfReader(BaseReader):
         file.read(3)              # Padding bytes
 
     def readobject(self, file: BufferedReader
-        ) -> Union[Brush, Entity, Group]:
+        ) -> Brush|Entity|Group:
         typename = read_lpstring(file)
 
         if typename == 'CMapSolid':
@@ -316,14 +316,14 @@ class RmfReader(BaseReader):
         read_int(file)  # Visgroup id
         read_colour(file)  # Editor colour
 
-        children: List[Union[Brush, Entity, Group]] = []
+        children: list[Brush|Entity|Group] = []
         object_count = read_int(file)
         for _ in range(object_count):
             children.append(self.readobject(file))
 
         return Group(children)
 
-    def addobject(self, obj: Union[Brush, Entity, Group]):
+    def addobject(self, obj: Brush|Entity|Group):
         if isinstance(obj, Entity):
             self.entities.append(obj)
         elif isinstance(obj, Brush):
