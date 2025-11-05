@@ -1,5 +1,7 @@
 # GoldSrc Map2Prop
 
+# Project has moved to [Erty-Gamedev/Map2Prop]([Erty-Gamedev/Map2Prop](https://github.com/Erty-Gamedev/Map2Prop))
+
 ## Introduction
 
 GoldSrc Map2Prop is a tool for converting .map, .rmf and .jmf files, as well as .obj files exported from J.A.C.K, to GoldSrc .smd file that can then be compiled into a GoldSrc format studio model without the hassle of using an 3D editor.
